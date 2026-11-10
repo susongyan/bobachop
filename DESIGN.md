@@ -161,7 +161,7 @@ Statement(Select/Insert/Update/Delete)
 
 ### 7.4 方言 Profile
 
-`字符串转义开关 / 包裹标识符字符 / 行注释与嵌套块注释 / 保留字集 / 分页形态(LIMIT vs ROWNUM) / 运算符集`。MySQL 先行，Oracle 其次，PG 预留。
+`字符串转义开关 / 包裹标识符字符 / 行注释与嵌套块注释 / 保留字集 / 分页形态(LIMIT vs OFFSET vs ROWNUM/FETCH FIRST) / 运算符集`。MySQL 先行，PostgreSQL 与 Oracle 随后（M3/M4，次序按需求定）。语句骨架预留方言锚点（SELECT/INSERT/UPDATE 尾锚），方言子句挂锚实现；AST 存语法事实（运算符原文），不做跨方言语义归一化。
 
 ### 7.5 工程结构
 
@@ -195,7 +195,8 @@ bobachop/                             # GitHub 仓库根 = Maven 聚合工程（
 | M0 | 工程骨架 + **AST 契约定稿评审并冻结** + 异常体系 + 对拍框架跑通空内核 | 对拍框架能对任意两棵 AST 给出字段级差异路径 |
 | M1 | MySQL：lexer + TokenBuffer + Pratt 表达式 + SELECT 主干（投影/JOIN/WHERE/GROUP/ORDER/LIMIT/子查询/派生表/UNION/CASE） | 黄金用例 + 语料(SELECT 子集)对拍全绿 |
 | M2 | MySQL：INSERT 全家（多行/insert-select/ON DUPLICATE KEY）、UPDATE、DELETE | 全 v1 白名单对拍全绿；bench 达 KPI |
-| M3 | Oracle profile + Oracle 白名单构造 | Oracle 语料对拍全绿 |
+| M3 | 第二方言 profile（PostgreSQL / Oracle，按需求排序）+ 白名单构造 | 该方言语料对拍全绿 |
+| M4 | 第三方言 profile + 白名单构造 | 该方言语料对拍全绿 |
 
 ## 10. 任务分解（AI Agent 可认领，含 DoD）
 
@@ -210,7 +211,8 @@ bobachop/                             # GitHub 仓库根 = Maven 聚合工程（
 | T7 | SelectParser 主干 | T6 | corpus MySQL SELECT 对拍全绿 |
 | T8 | InsertParser（含括号前瞻 helper）/UpdateParser/DeleteParser | T6 | 对应语料对拍全绿 |
 | T9 | bench 套件（四类场景） | T7 | 输出 KPI 报告与对比图表 |
-| T10 | OracleProfile + Oracle 构造 | T8 | Oracle 语料对拍全绿 |
+| T10 | 方言二 Profile + 白名单构造（PostgreSQL / Oracle 按需求） | T8 | 该方言语料对拍全绿 |
+| T11 | 方言三 Profile + 白名单构造 | T10 | 该方言语料对拍全绿 |
 
 通用约束：Java 8；零依赖；不复制外部代码；每任务含黄金用例与对拍断言；公共类 javadoc 必备。
 
@@ -232,4 +234,4 @@ bobachop/                             # GitHub 仓库根 = Maven 聚合工程（
 
 **基准复现方法**：以 ANTLR4 运行时 + 方言生成内核构造微基准。冷启动=进程首调；首走=预热 3 万次某形态后首走新形态取第 1/2/2000 次；稳态=2s 窗口均值；线性度=批量 INSERT 100/300/1000 行拟合。基线数据见 §1.1。
 
-**版本记录**：v1.1（2026-11-10）定名 BobaChop，确立仓库/Maven/包标识符体系；v1.0（2026-10-30）初版定稿。
+**版本记录**：v1.2（2026-11-10）方言范围定稿：MySQL 先行，PostgreSQL 与 Oracle 随后（M3/M4）；§7.4 增方言锚点与"语法事实不归一化"约定。v1.1（2026-11-10）定名 BobaChop，确立仓库/Maven/包标识符体系；v1.0（2026-10-30）初版定稿。
