@@ -5,7 +5,7 @@
 
 | 里程碑 | 内容 | 任务 | 参考工期 | 时段（参考） | 状态 |
 |---|---|---|---|---|---|
-| M0 | 工程骨架 + AST 契约冻结 + 对拍框架空跑 | T1–T3 | 1–1.5 周 | 11 月末 | 🔄 T2 已提交待评审冻结 |
+| M0 | 工程骨架 + AST 契约冻结 + 对拍框架空跑 | T1–T3 | 1–1.5 周 | 11 月末 | 🔄 T1–T2 完成，T3 进行中 |
 | M1 | MySQL lexer + TokenBuffer + Pratt + SELECT 主干 | T4–T7 | 2.5–3.5 周 | 12 月 | 未开始 |
 | M2 | MySQL INSERT 全家 + UPDATE/DELETE | T8–T9 | 1.5–2.5 周 | 12 月末–1 月初 | 未开始 |
 | M3 | PostgreSQL profile + 白名单构造 | T10 | 1.5–2 周 | 1 月中 | 未开始 |
@@ -16,7 +16,7 @@
 任务状态：
 
 - [x] T1 工程骨架（Maven 多模块 + CI + checkstyle + JDK8 基线，mvn install 全绿，2026-11-19）
-- [ ] T2 AST 契约 v1（已提交 42 类，待评审冻结）
+- [x] T2 AST 契约 v1（42 类，冻结 2026-11-19，DESIGN v1.4）
 - [ ] T3 对拍框架
 - [ ] T4 TokenType/Kw/KeywordTable + Lexer（MySQL）
 - [ ] T5 TokenBuffer
