@@ -13,11 +13,62 @@
     <description>Hand-written high-performance SQL parsing kernel</description>
     <url>https://github.com/susongyan/bobachop</url>
 
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+        </license>
+    </licenses>
+
+    <scm>
+        <url>https://github.com/susongyan/bobachop</url>
+        <connection>scm:git:git@github.com:susongyan/bobachop.git</connection>
+        <developerConnection>scm:git:git@github.com:susongyan/bobachop.git</developerConnection>
+    </scm>
+
+    <modules>
+        <module>boba-chop-core</module>
+        <module>boba-chop-diff</module>
+        <module>boba-chop-bench</module>
+    </modules>
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <!-- Java 8 API 基线：JDK 9+ 上经 release 参数强制；本机 JDK 21 编译即验证 -->
+        <maven.compiler.release>8</maven.compiler.release>
+        <junit.version>5.10.2</junit.version>
     </properties>
 
-    <!-- modules: boba-chop-core / boba-chop-diff / boba-chop-bench（DESIGN.md §7.5，任务 T1 添加） -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.13.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.2.5</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>3.4.1</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
 </project>
