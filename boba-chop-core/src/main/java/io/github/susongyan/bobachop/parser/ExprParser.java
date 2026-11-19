@@ -19,7 +19,9 @@ import io.github.susongyan.bobachop.ast.LikeExpr;
 import io.github.susongyan.bobachop.ast.Literal;
 import io.github.susongyan.bobachop.ast.LiteralKind;
 import io.github.susongyan.bobachop.ast.ParameterMarker;
+import io.github.susongyan.bobachop.ast.SelectQuery;
 import io.github.susongyan.bobachop.ast.Star;
+import io.github.susongyan.bobachop.ast.SubqueryExpr;
 import io.github.susongyan.bobachop.ast.UnaryExpr;
 import io.github.susongyan.bobachop.ast.WhenClause;
 import io.github.susongyan.bobachop.exception.ParseException;
@@ -66,18 +68,43 @@ public final class ExprParser {
             Arrays.asList("CAST", "CONVERT", "EXTRACT", "POSITION", "SUBSTRING", "TRIM", "WEIGHT_STRING",
                     "DEFAULT", "LEFT", "RIGHT", "CHAR"));
 
+    /** 子查询桥接：语句层语法器注入，表达式内的 (SELECT/IN(SELECT/EXISTS( 槽位经此回调真解析。 */
+    public interface SubqueryBridge {
+
+        /** 从当前位置解析一个查询体（不消费外层括号）。 */
+        SelectQuery parseSelectQuery();
+    }
+
+    private static final SubqueryBridge NO_SUBQUERY = new SubqueryBridge() {
+        @Override
+        public SelectQuery parseSelectQuery() {
+            throw new UnsupportedSyntaxException("白名单外: 子查询（独立表达式模式未接语句层语法器）");
+        }
+    };
+
     private final TokenBuffer buffer;
+    private final SubqueryBridge subqueries;
 
     /** 参数下标按访问序分配（白名单构造内访问序 = 文本序）。 */
     private int paramCounter;
 
     public ExprParser(final TokenBuffer buffer) {
+        this(buffer, NO_SUBQUERY);
+    }
+
+    public ExprParser(final TokenBuffer buffer, final SubqueryBridge subqueries) {
         this.buffer = buffer;
+        this.subqueries = subqueries;
     }
 
     /** 已分配的参数标记个数（0 起计，下标上限 = 此值）。 */
     public int paramCount() {
         return paramCounter;
+    }
+
+    /** 语句层（如 LIMIT 参数位）取用下一个参数下标，保持访问序 = 文本序。 */
+    int nextParamIndex() {
+        return paramCounter++;
     }
 
     /** 便捷入口：整串恰为一个表达式（到 EOF），多余 token 即语法错误。 */
@@ -193,7 +220,11 @@ public final class ExprParser {
             return new UnaryExpr(token.start(), operand.stop(), token.text(), operand, false);
         }
         if (Kw.EXISTS == kw) {
-            throw unsupported("EXISTS 子查询表达式（待 T7 接入子查询）", token);
+            tok();
+            expectType(TokenType.LPAREN, "EXISTS 后的 (");
+            final SelectQuery query = subqueries.parseSelectQuery();
+            final Token rparen = expectType(TokenType.RPAREN, "EXISTS 子查询后的 )");
+            return new ExistsExpr(token.start(), rparen.stop(), query);
         }
         if (!kw.reserved()) {
             return parseNameOrCall();
@@ -205,11 +236,14 @@ public final class ExprParser {
         throw new ParseException("保留字出现在表达式起点: " + token, token.start());
     }
 
-    /** 括号起点：(SELECT → 标量子查询（待 T7）；(expr)；(expr, …) → 行构造器（白名单外）。 */
+    /** 括号起点：(SELECT → 标量子查询；(expr)；(expr, …) → 行构造器（白名单外）。 */
     private Expr parseParenStart() {
         final Token lparen = buffer.peek(0);
         if (buffer.peek(1).isKw(Kw.SELECT)) {
-            throw unsupported("标量子查询（待 T7 接入子查询）", lparen);
+            tok();
+            final SelectQuery query = subqueries.parseSelectQuery();
+            final Token rparen = expectType(TokenType.RPAREN, "子查询后的 )");
+            return new SubqueryExpr(lparen.start(), rparen.stop(), query);
         }
         tok();
         final Expr inner = parseExpr();
@@ -410,7 +444,9 @@ public final class ExprParser {
         tok();
         expectType(TokenType.LPAREN, "IN 后的 (");
         if (buffer.peek(0).isKw(Kw.SELECT)) {
-            throw unsupported("IN 子查询（待 T7 接入子查询）", buffer.peek(0));
+            final SelectQuery query = subqueries.parseSelectQuery();
+            final Token rparen = expectType(TokenType.RPAREN, "IN 子查询后的 )");
+            return new InExpr(left.start(), rparen.stop(), left, not, null, query);
         }
         final List<Expr> values = new ArrayList<Expr>();
         while (true) {

@@ -1,0 +1,52 @@
+-- BobaChop corpus: MySQL SELECT v1 白名单形态（每行一条；空行与本形态注释行跳过）
+-- 基本形态与投影
+SELECT 1
+SELECT * FROM t_order
+SELECT id, user_id AS uid, amount FROM t_order
+SELECT DISTINCT status FROM t_order
+SELECT o.id, o.amount * 2 AS double_amount FROM t_order o
+-- 别名形态
+SELECT id uid FROM t_order
+SELECT `order`.id FROM `order`
+-- WHERE 运算符族
+SELECT id FROM t_order WHERE amount > 100 AND status = 'PAID'
+SELECT id FROM t_order WHERE status IN ('PAID', 'DONE') OR amount <=> 0
+SELECT id FROM t_order WHERE amount BETWEEN 10 AND 20 AND remark NOT LIKE '%test%' ESCAPE '\\'
+SELECT id FROM t_order WHERE remark IS NOT NULL AND status != 'CANCEL'
+SELECT id FROM t_order WHERE id % 2 = 0 XOR user_id & 1
+SELECT id FROM t_order WHERE remark REGEXP '^ab'
+-- CASE 与函数
+SELECT CASE WHEN amount > 100 THEN 'HIGH' ELSE 'LOW' END AS lvl FROM t_order
+SELECT CASE status WHEN 'PAID' THEN 1 ELSE 0 END FROM t_order
+SELECT COUNT(*), MAX(amount) FROM t_order
+SELECT IFNULL(remark, '') FROM t_order
+-- JOIN 族
+SELECT o.id, i.price FROM t_order o INNER JOIN t_order_item i ON o.id = i.order_id
+SELECT o.id FROM t_order o LEFT OUTER JOIN t_user u ON o.user_id = u.id
+SELECT o.id FROM t_order o, t_user u WHERE o.user_id = u.id
+SELECT o.id FROM t_order o JOIN t_user u USING (user_id)
+SELECT o.id FROM t_order o STRAIGHT_JOIN t_user u ON o.user_id = u.id
+SELECT o.id FROM t_order o CROSS JOIN t_user u
+-- 派生表
+SELECT d.uid, d.total FROM (SELECT user_id AS uid, SUM(amount) AS total FROM t_order GROUP BY user_id) d
+-- 子查询
+SELECT id FROM t_order WHERE user_id IN (SELECT id FROM t_user WHERE level = 3)
+SELECT id FROM t_order WHERE EXISTS (SELECT 1 FROM t_order_item WHERE order_id = t_order.id)
+SELECT id FROM t_order WHERE amount > (SELECT AVG(amount) FROM t_order)
+-- 分组与排序
+SELECT user_id, COUNT(*) AS cnt FROM t_order GROUP BY user_id HAVING cnt > 3
+SELECT id FROM t_order ORDER BY amount DESC, id
+SELECT id FROM t_order ORDER BY user_id, created_at DESC
+-- LIMIT 三形态
+SELECT id FROM t_order LIMIT 10
+SELECT id FROM t_order LIMIT 20, 10
+SELECT id FROM t_order LIMIT 10 OFFSET 20
+-- UNION
+SELECT id FROM t_order UNION SELECT id FROM t_order_history
+SELECT id FROM t_order UNION ALL SELECT id FROM t_order_history
+-- 参数标记
+SELECT id FROM t_order WHERE user_id = ? AND status = ? ORDER BY id LIMIT ?, ?
+SELECT id FROM t_order WHERE amount > ? LIMIT ?
+-- 注释与无 FROM
+SELECT /* 主键点查 */ id FROM t_order WHERE id = 42 -- 尾注释
+SELECT 1 + 2 * 3
