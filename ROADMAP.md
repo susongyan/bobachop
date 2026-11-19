@@ -8,7 +8,7 @@
 | M0 | 工程骨架 + AST 契约冻结 + 对拍框架空跑 | T1–T3 | 1–1.5 周 | 11 月末 | ✅ 完成（T1–T3 冻结，2026-11-19） |
 | M1 | MySQL lexer + TokenBuffer + Pratt + SELECT 主干 | T4–T7 | 2.5–3.5 周 | 12 月 | ✅ 完成（T4–T7 冻结，2026-11-19；ANTLR4 参考对拍适配为跟进项） |
 | M2 | MySQL INSERT 全家 + UPDATE/DELETE | T8–T9 | 1.5–2.5 周 | 12 月末–1 月初 | ✅ 完成（T8–T9 冻结，2026-11-19；bench 首轮 KPI 达标，同机对拍随参考执行器跟进） |
-| M3 | PostgreSQL profile + 白名单构造 | T10 | 1.5–2 周 | 1 月中 | 未开始 |
+| M3 | PostgreSQL profile + 白名单构造 | T10 | 1.5–2 周 | 1 月中 | ✅ 完成（T10 冻结，2026-11-19，DESIGN v2.2） |
 | M4 | Oracle profile + 白名单构造 | T11 | 1.5–2 周 | 1 月末 | 未开始 |
 
 对外依赖：无。下游约定：boba-pour 的 M0 依赖本仓 T2（AST 冻结）、M2 依赖本仓 M1。
@@ -24,5 +24,5 @@
 - [x] T7 SelectParser 主干（冻结 2026-11-19，DESIGN v1.9；api.BobaChop 入口 + BobachopExecutor + corpus select-v1 41 条 + 21 黄金用例；ANTLR4 参考执行器适配为独立跟进项）
 - [x] T8 InsertParser/UpdateParser/DeleteParser（冻结 2026-11-19，DESIGN v2.0；语句级 Parser 分派器 + INSERT/UPDATE/DELETE 白名单 + corpus dml-v1 26 条 + 19 黄金用例）
 - [x] T9 bench 套件（冻结 2026-11-19，DESIGN v2.1；四场景 + 收敛口径 KPI 可测化，首轮实测达标）
-- [ ] T10 PostgreSQL Profile + 构造（已提交待评审：DialectProfile/LexerConfig/KeywordTable 数据化 + PG 词法/分页族/白名单归类 + corpus pg/select-v1 33 条 + PgLexer/PgParser 21 黄金用例）
-- [ ] T11 Oracle Profile + 构造
+- [x] T10 PostgreSQL Profile + 构造（冻结 2026-11-19，DESIGN v2.2；方言数据化三件套 LexerConfig/KeywordTable/DialectProfile + PG 词法与分页族 + 白名单前置归类 + corpus pg/select-v1 33 条 + 21 黄金用例）
+- [ ] T11 Oracle Profile + 构造（进行中）
