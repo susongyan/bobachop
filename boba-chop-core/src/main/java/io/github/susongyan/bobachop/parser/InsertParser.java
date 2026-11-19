@@ -9,6 +9,7 @@ import io.github.susongyan.bobachop.ast.Expr;
 import io.github.susongyan.bobachop.ast.FunctionCall;
 import io.github.susongyan.bobachop.ast.InsertSource;
 import io.github.susongyan.bobachop.ast.InsertStatement;
+import io.github.susongyan.bobachop.ast.SelectQuery;
 import io.github.susongyan.bobachop.ast.SelectSource;
 import io.github.susongyan.bobachop.ast.Statement;
 import io.github.susongyan.bobachop.ast.TableName;
@@ -106,7 +107,10 @@ public final class InsertParser {
             return parseValuesSource();
         }
         if (token.isKw(Kw.SELECT)) {
-            return new SelectSource(token.start(), lastStop(), selects.parseQueryBody());
+            // 必须先解析查询体再取 lastStop()：实参左结合求值会让 lastStop() 抢在子解析前
+            // 取到 SELECT 前一 token 的终点，span 倒挂（F1 R1 对拍体系抓出的 D5 契约缺陷）
+            final SelectQuery query = selects.parseQueryBody();
+            return new SelectSource(token.start(), lastStop(), query);
         }
         if (TokenType.IDENTIFIER == token.type() && "VALUE".equalsIgnoreCase(token.text())) {
             throw unsupported("VALUE 同义形态", token);

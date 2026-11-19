@@ -102,6 +102,18 @@ final class InsertParserTest {
     }
 
     @Test
+    void insertSelect数据源span不倒挂_f1修复回归() {
+        // F1 对拍体系（SpanInvariants R1）抓出的缺陷回归：SelectSource 构造时
+        // lastStop() 抢在子解析前求值，stop = SELECT 前一 token 终点 → span 倒挂
+        final InsertStatement insert = (InsertStatement) BobaChop.parse(
+                "INSERT INTO t (a) SELECT x FROM src WHERE x > 0");
+        final SelectSource source = (SelectSource) insert.source();
+        final SelectStatement query = (SelectStatement) source.query();
+        assertEquals(query.start(), source.start(), "数据源 span 起点应为 SELECT 起点");
+        assertEquals(query.stop(), source.stop(), "数据源 span 终点应为查询体终点");
+    }
+
+    @Test
     void insertSelect自带ORDER_BY与LIMIT合法() {
         final InsertStatement insert = (InsertStatement) BobaChop.parse(
                 "INSERT INTO t SELECT id FROM src ORDER BY id DESC LIMIT 3");
