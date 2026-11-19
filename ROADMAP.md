@@ -6,7 +6,7 @@
 | 里程碑 | 内容 | 任务 | 参考工期 | 时段（参考） | 状态 |
 |---|---|---|---|---|---|
 | M0 | 工程骨架 + AST 契约冻结 + 对拍框架空跑 | T1–T3 | 1–1.5 周 | 11 月末 | ✅ 完成（T1–T3 冻结，2026-11-19） |
-| M1 | MySQL lexer + TokenBuffer + Pratt + SELECT 主干 | T4–T7 | 2.5–3.5 周 | 12 月 | 🔄 T4–T5 冻结，T6 已提交待评审 |
+| M1 | MySQL lexer + TokenBuffer + Pratt + SELECT 主干 | T4–T7 | 2.5–3.5 周 | 12 月 | 🔄 T4–T6 冻结，T7 进行中 |
 | M2 | MySQL INSERT 全家 + UPDATE/DELETE | T8–T9 | 1.5–2.5 周 | 12 月末–1 月初 | 未开始 |
 | M3 | PostgreSQL profile + 白名单构造 | T10 | 1.5–2 周 | 1 月中 | 未开始 |
 | M4 | Oracle profile + 白名单构造 | T11 | 1.5–2 周 | 1 月末 | 未开始 |
@@ -20,7 +20,7 @@
 - [x] T3 对拍框架（冻结 2026-11-19，DESIGN v1.5；6 类 + 15 用例）
 - [x] T4 TokenType/Kw/KeywordTable + Lexer（冻结 2026-11-19，DESIGN v1.6；14 黄金用例）
 - [x] T5 TokenBuffer（冻结 2026-11-19，DESIGN v1.7；7 用例）
-- [ ] T6 ExprParser（已提交待评审：Pratt 13 级优先级 + BETWEEN/NOT/IS/LIKE/IN/CASE/限定名/函数调用特判，19 黄金用例；子查询槽位占位拒绝待 T7）
+- [x] T6 ExprParser（冻结 2026-11-19，DESIGN v1.8；Pratt 13 级优先级 + BETWEEN/NOT/IS/LIKE/IN/CASE/限定名/函数调用特判，19 黄金用例；子查询槽位占位由 T7 接活）
 - [ ] T7 SelectParser 主干
 - [ ] T8 InsertParser/UpdateParser/DeleteParser
 - [ ] T9 bench 套件
