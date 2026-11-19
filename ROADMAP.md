@@ -13,6 +13,11 @@
 
 对外依赖：无。下游约定：boba-pour 的 M0 依赖本仓 T2（AST 冻结）、M2 依赖本仓 M1。
 
+跟进项：
+
+- [x] WHITELIST.md 三件套显式化（2026-11-19，v1.0 对齐 DESIGN v2.3：支持面/开关矩阵/前置归类总表/超集窄口校准点 + WhitelistDocTest 版本对齐门禁）
+- [ ] ANTLR4 参考执行器适配（fork-AST→自有 AST 映射器，双内核真对拍 + 同机 ≥5x KPI 实测；三张关键字表与超集窄口的验收器）
+
 任务状态：
 
 - [x] T1 工程骨架（Maven 多模块 + CI + checkstyle + JDK8 基线，mvn install 全绿，2026-11-19）
