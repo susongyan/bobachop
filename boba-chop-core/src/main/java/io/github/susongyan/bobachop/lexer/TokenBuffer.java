@@ -23,19 +23,26 @@ import java.util.Objects;
 public final class TokenBuffer {
 
     private final List<Token> tokens;
+    private final String source;
     private int cursor;
 
     public TokenBuffer(final String sql) {
-        this(Lexer.lex(sql));
+        this(sql, Lexer.lex(sql));
     }
 
-    public TokenBuffer(final List<Token> tokens) {
+    /** source 可空：为空时语法器对限定名/时间字面量等跨 token 原文退化为 token 拼接。 */
+    public TokenBuffer(final String source, final List<Token> tokens) {
         final List<Token> copy = new ArrayList<Token>(Objects.requireNonNull(tokens, "tokens"));
         if (copy.isEmpty() || copy.get(copy.size() - 1).type() != TokenType.EOF) {
             throw new IllegalArgumentException("token 序列必须以 EOF 哨兵结尾");
         }
         this.tokens = Collections.unmodifiableList(copy);
+        this.source = source;
         this.cursor = 0;
+    }
+
+    public TokenBuffer(final List<Token> tokens) {
+        this(null, tokens);
     }
 
     /** 只读前瞻：ahead=0 为当前 token（不消费），越界恒返回 EOF 哨兵。 */
@@ -69,5 +76,10 @@ public final class TokenBuffer {
     /** 只读视图（对拍与诊断）。 */
     public List<Token> tokens() {
         return tokens;
+    }
+
+    /** 源 SQL 文本（语法器取跨 token 原文切片用）；List 构造路径可为 null。 */
+    public String source() {
+        return source;
     }
 }
