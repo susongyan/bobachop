@@ -251,8 +251,7 @@ final class SelectParserTest {
 
     @Test
     void 语句级拒绝分类() {
-        // 白名单外：DML 未接入、CTE、尾部锁定/窗口构造、括号化表引用、三级限定表名、ROLLUP、LIMIT 表达式
-        assertThrows(UnsupportedSyntaxException.class, () -> BobaChop.parse("INSERT INTO t VALUES (1)"));
+        // 白名单外：CTE、尾部锁定/窗口构造、括号化表引用、三级限定表名、ROLLUP、LIMIT 表达式
         assertThrows(UnsupportedSyntaxException.class, () -> BobaChop.parse("WITH c AS (SELECT 1) SELECT * FROM c"));
         assertThrows(UnsupportedSyntaxException.class, () -> BobaChop.parse("SELECT id FROM t FOR UPDATE"));
         assertThrows(UnsupportedSyntaxException.class, () -> BobaChop.parse("SELECT * FROM (t1 JOIN t2 ON 1 = 1) x"));

@@ -1,7 +1,7 @@
 package io.github.susongyan.bobachop.api;
 
 import io.github.susongyan.bobachop.ast.Statement;
-import io.github.susongyan.bobachop.parser.SelectParser;
+import io.github.susongyan.bobachop.parser.Parser;
 
 /**
  * BobaChop 对外唯一入口：SQL 文本 → 冻结 AST。
@@ -16,10 +16,14 @@ import io.github.susongyan.bobachop.parser.SelectParser;
  *   <li>词法错误（{@code LexException}）按白名单外语义上抛，与语法拒绝同等对待。</li>
  * </ul>
  *
- * <p><b>当前支持面</b>（MySQL 方言，v1 白名单随 WHITELIST.md 演进）：SELECT 主干——
- * 投影/别名/DISTINCT、JOIN（INNER/LEFT/RIGHT/CROSS/STRAIGHT_JOIN/逗号，ON/USING）、派生表、
- * WHERE/GROUP BY/HAVING/ORDER BY、LIMIT 三形态、UNION [ALL]、表达式子查询。
- * INSERT/UPDATE/DELETE 于 T8 接入。</p>
+ * <p><b>当前支持面</b>（MySQL 方言，v1 白名单随 WHITELIST.md 演进）：</p>
+ * <ul>
+ *   <li>SELECT 主干——投影/别名/DISTINCT、JOIN（INNER/LEFT/RIGHT/CROSS/STRAIGHT_JOIN/逗号，ON/USING）、
+ *   派生表、WHERE/GROUP BY/HAVING/ORDER BY、LIMIT 三形态、UNION [ALL]、表达式子查询</li>
+ *   <li>INSERT——[INTO]（列清单）/VALUES 多行/insert-SELECT（含 UNION 源）/ON DUPLICATE KEY UPDATE
+ *   （含 MySQL 专有 VALUES(col)）</li>
+ *   <li>UPDATE 单表（别名/SET 赋值/WHERE）、DELETE 单表（别名/WHERE）</li>
+ * </ul>
  */
 public final class BobaChop {
 
@@ -36,6 +40,6 @@ public final class BobaChop {
      * @throws io.github.susongyan.bobachop.exception.LexException 词法错误
      */
     public static Statement parse(final String sql) {
-        return new SelectParser(sql).parse();
+        return new Parser(sql).parse();
     }
 }

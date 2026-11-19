@@ -1,0 +1,34 @@
+-- BobaChop corpus: MySQL INSERT/UPDATE/DELETE v1 白名单形态（每行一条；空行与本形态注释行跳过）
+-- INSERT 基本形态
+INSERT INTO t_order (id, user_id, amount) VALUES (1, 1001, 9.90)
+INSERT INTO t_order (id, user_id, amount) VALUES (2, 1002, 19.90), (3, 1003, 29.90), (4, 1004, 39.90)
+INSERT INTO t_order VALUES (5, 1005, 49.90, 'PAID', NULL)
+INSERT t_order (id) VALUES (6)
+INSERT INTO db.t_order (id, remark) VALUES (7, '备注')
+INSERT INTO t_order (id, amount) VALUES (?, ?)
+INSERT INTO t_order (id, amount) VALUES (?, ?), (?, ?)
+-- INSERT 行值为表达式/函数/子查询
+INSERT INTO t_order (id, amount) VALUES (8, 9.90 * 2)
+INSERT INTO t_audit (actor, at) VALUES (CONCAT('sys', '-job'), NOW())
+INSERT INTO t_seq (next_id) VALUES ((SELECT MAX(id) + 1 FROM t_seq))
+-- insert-select
+INSERT INTO t_order_bak (id, amount) SELECT id, amount FROM t_order WHERE status = 'PAID'
+INSERT INTO t_order_bak SELECT * FROM t_order
+INSERT INTO t_stat (user_id, cnt) SELECT user_id, COUNT(*) FROM t_order GROUP BY user_id
+INSERT INTO t_merge (id) SELECT id FROM t_order_a UNION ALL SELECT id FROM t_order_b
+INSERT INTO t_top (id) SELECT id FROM t_order ORDER BY amount DESC LIMIT 10
+-- ON DUPLICATE KEY UPDATE
+INSERT INTO t_counter (biz, cnt) VALUES ('order', 1) ON DUPLICATE KEY UPDATE cnt = cnt + 1
+INSERT INTO t_order (id, remark) VALUES (9, 'x') ON DUPLICATE KEY UPDATE remark = VALUES(remark), update_time = NOW()
+-- UPDATE
+UPDATE t_order SET status = 'DONE'
+UPDATE t_order SET status = 'DONE', retry = retry + 1 WHERE id = 10
+UPDATE t_order o SET o.status = 'CANCEL' WHERE o.user_id IN (SELECT id FROM t_blacklist)
+UPDATE t_order AS o SET o.amount = o.amount * 0.9 WHERE o.id = ?
+UPDATE db.t_config SET v = ? WHERE k = 'switch'
+-- DELETE
+DELETE FROM t_order
+DELETE FROM t_order WHERE id = 11
+DELETE FROM t_order WHERE user_id = ? AND status = 'INIT'
+DELETE FROM t_order AS o WHERE o.created_at < '2026-01-01'
+DELETE FROM db.t_log WHERE created_at < '2025-01-01'

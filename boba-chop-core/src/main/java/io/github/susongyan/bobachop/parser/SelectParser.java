@@ -38,54 +38,33 @@ import io.github.susongyan.bobachop.lexer.TokenType;
  *
  * <p><b>v1 白名单外</b>：UNION 后的复合级 ORDER BY/LIMIT（AST 契约 CompoundSelect 无尾锚，后续以
  * 追加可空字段演进）、括号化表引用/括号化复合查询、WITH ROLLUP、FOR UPDATE/LOCK IN SHARE MODE、
- * 多级限定表名（db.t 为上限）、LIMIT 实参非数字字面量或参数标记、INSERT/UPDATE/DELETE（T8）。</p>
+ * 多级限定表名（db.t 为上限）、LIMIT 实参非数字字面量或参数标记。</p>
  */
 public final class SelectParser {
 
     private final TokenBuffer buffer;
     private final ExprParser exprs;
 
-    public SelectParser(final String sql) {
-        buffer = new TokenBuffer(sql);
-        exprs = new ExprParser(buffer, new ExprParser.SubqueryBridge() {
-            @Override
-            public SelectQuery parseSelectQuery() {
-                return SelectParser.this.parseSelectQuery();
-            }
-        });
+    /** 共享 buffer/exprs 由语句级 {@link Parser} 装配（子查询桥接与 insert-select 复用本类）。 */
+    SelectParser(final TokenBuffer buffer, final ExprParser exprs) {
+        this.buffer = buffer;
+        this.exprs = exprs;
     }
 
-    /** 顶层语句入口：首 token 分派 + 可选尾分号 + 强制 EOF（v1 单语句）。 */
-    public Statement parse() {
-        final Token first = buffer.peek(0);
-        if (first.isKw(Kw.INSERT) || first.isKw(Kw.UPDATE) || first.isKw(Kw.DELETE)) {
-            throw unsupported("INSERT/UPDATE/DELETE 语句（T8 接入）", first);
+    /** 语句级 SELECT 入口（Parser 分派后到达）：查询体 + 白名单外尾部构造检查。 */
+    Statement parseStatement() {
+        final SelectQuery query = parseQueryBody();
+        final Token trailing = buffer.peek(0);
+        // 已知白名单外尾部构造显式归 UnsupportedSyntaxException；其余尾部 token 由 Parser 按语法错误定性
+        if (trailing.isKw(Kw.FOR) || trailing.isKw(Kw.LOCK) || trailing.isKw(Kw.WINDOW)
+                || trailing.isKw(Kw.NATURAL) || trailing.isKw(Kw.INTO) || trailing.isKw(Kw.PROCEDURE)) {
+            throw unsupported("SELECT 尾部构造 '" + trailing.text() + "'", trailing);
         }
-        if (first.isKw(Kw.WITH)) {
-            throw unsupported("CTE（WITH 子句）", first);
-        }
-        if (!first.isKw(Kw.SELECT)) {
-            throw new ParseException("期望 SELECT 但为 " + first, first.start());
-        }
-        final Statement statement = (Statement) parseSelectQuery();
-        if (TokenType.SEMICOLON == buffer.peek(0).type()) {
-            buffer.next();
-        }
-        if (!buffer.eof()) {
-            final Token trailing = buffer.peek(0);
-            // 已知白名单外尾部构造显式归 UnsupportedSyntaxException；其余（含多语句）为语法错误。
-            // 不做"保留字即白名单外"的宽泛启发：SELECT 本身是保留字，会吞掉多语句的定性
-            if (trailing.isKw(Kw.FOR) || trailing.isKw(Kw.LOCK) || trailing.isKw(Kw.WINDOW)
-                    || trailing.isKw(Kw.NATURAL) || trailing.isKw(Kw.INTO) || trailing.isKw(Kw.PROCEDURE)) {
-                throw unsupported("SELECT 尾部构造 '" + trailing.text() + "'", trailing);
-            }
-            throw new ParseException("语句后多余 token: " + trailing, trailing.start());
-        }
-        return statement;
+        return (Statement) query;
     }
 
-    /** 查询体：单 SELECT 或 UNION [ALL] 链（左结合按位置对应 operators）。 */
-    SelectQuery parseSelectQuery() {
+    /** 查询体：单 SELECT 或 UNION [ALL] 链（左结合按位置对应 operators）；亦为子查询桥与 insert-select 的目标。 */
+    SelectQuery parseQueryBody() {
         final SelectStatement first = parseSimpleSelect(false);
         if (!buffer.peek(0).isKw(Kw.UNION)) {
             return first;
@@ -296,7 +275,7 @@ public final class SelectParser {
         if (TokenType.LPAREN == first.type()) {
             if (buffer.peek(1).isKw(Kw.SELECT)) {
                 buffer.next();
-                final SelectQuery query = parseSelectQuery();
+                final SelectQuery query = parseQueryBody();
                 expectType(TokenType.RPAREN, "派生表后的 )");
                 final Token alias = parseAlias();
                 if (null == alias) {
