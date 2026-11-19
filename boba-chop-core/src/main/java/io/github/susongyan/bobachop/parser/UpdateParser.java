@@ -9,6 +9,7 @@ import io.github.susongyan.bobachop.ast.Expr;
 import io.github.susongyan.bobachop.ast.Statement;
 import io.github.susongyan.bobachop.ast.TableName;
 import io.github.susongyan.bobachop.ast.UpdateStatement;
+import io.github.susongyan.bobachop.dialect.DialectProfile;
 import io.github.susongyan.bobachop.exception.ParseException;
 import io.github.susongyan.bobachop.exception.UnsupportedSyntaxException;
 import io.github.susongyan.bobachop.lexer.Kw;
@@ -27,10 +28,12 @@ public final class UpdateParser {
 
     private final TokenBuffer buffer;
     private final ExprParser exprs;
+    private final DialectProfile profile;
 
-    UpdateParser(final TokenBuffer buffer, final ExprParser exprs) {
+    UpdateParser(final TokenBuffer buffer, final ExprParser exprs, final DialectProfile profile) {
         this.buffer = buffer;
         this.exprs = exprs;
+        this.profile = profile;
     }
 
     Statement parseStatement() {
@@ -93,7 +96,8 @@ public final class UpdateParser {
         if (buffer.peek(0).isKw(Kw.AS)) {
             buffer.next();
             alias = expectName("AS 后的表别名");
-        } else if (isNameToken(buffer.peek(0))) {
+        } else if (isNameToken(buffer.peek(0)) && !buffer.peek(0).isKw(Kw.SET)) {
+            // SET 在 PG 为非保留字，但 UPDATE 语境恒为子句分隔词、不作裸别名（D9 位置键控）
             alias = buffer.next();
         }
         return new TableName(first.start(), null != alias ? alias.stop() : name.stop(), qualifier, name.text(),
@@ -114,7 +118,7 @@ public final class UpdateParser {
 
     private boolean isNameToken(final Token token) {
         return TokenType.IDENTIFIER == token.type() || TokenType.QUOTED_IDENTIFIER == token.type()
-                || TokenType.KEYWORD == token.type() && !token.kw().reserved();
+                || TokenType.KEYWORD == token.type() && !profile.reserved(token.kw());
     }
 
     private Token expectName(final String what) {

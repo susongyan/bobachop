@@ -7,35 +7,38 @@ import java.util.Objects;
 import io.github.susongyan.bobachop.exception.LexException;
 
 /**
- * MySQL 词法器：显式字符类别分派 + maximal munch，无正则引擎（DESIGN §7.2）。
+ * 显式字符类别分派 + maximal munch 词法器，无正则引擎（DESIGN §7.2）；方言差异经
+ * {@link LexerConfig} 数据注入（D8 / §7.4，T10 抽出，静态 {@link #lex(String)} 保持 MySQL 默认）。
  *
- * <p><b>规则要点</b>：词（{@code [A-Za-z_][A-Za-z0-9_$]*}）统一扫描后查 {@link KeywordTable}（D9），
- * 命中即 KEYWORD；反引号包裹标识符永不查表。字符串支持 {@code ''} 双写转义与反斜杠转义，
- * {@code N''}/{@code X''}/{@code B''} 引导形态在词法层并入 STRING；{@code _charset'...'}
- * 引导形态 v1 不支持（词法层拆为标识符 + 字符串，由语法层拒绝）。数字含 {@code 0x}/{@code 0b}/
- * 科学计数并保留原文；运算符最长匹配（{@code <=>}、{@code :=}、{@code ->>}…）；注释跳过不产 token，
- * 偏移为源文本绝对偏移（跳过不断链）。非法字符与非 ASCII（字符串/注释外）抛 {@link LexException}。</p>
- *
- * <p><b>方言开关（§7.4，T4 以 MySQL 常量内嵌，T10 抽为 DialectProfile 数据）</b>：
- * {@code backslashEscapes=true}、{@code ansiQuotes=false}（双引号=字符串）、包裹符=反引号、
- * 行注释 {@code --}/{@code #}、块注释不嵌套、标识符 ASCII。</p>
+ * <p><b>规则要点</b>：词（{@code [A-Za-z_][A-Za-z0-9_$]*}）统一扫描后查方言 {@link KeywordTable}
+ * （D9），命中即 KEYWORD；包裹标识符永不查表。字符串支持 {@code ''} 双写转义与方言性反斜杠转义
+ * （PG 的 {@code E''} 无视全局开关恒转义），引导前缀形态（MySQL {@code N''/X''/B''}、
+ * PG {@code E''/B''/X''}）在词法层并入 STRING；{@code _charset'...'} 引导形态 v1 不支持
+ * （词法层拆为标识符 + 字符串，由语法层拒绝）。数字含 {@code 0x}/{@code 0b}/科学计数并保留原文；
+ * 运算符最长匹配（{@code <=>}、{@code :=}、{@code ->>}…）；注释跳过不产 token，偏移为源文本
+ * 绝对偏移（跳过不断链）。非法字符与非 ASCII（字符串/注释外）抛 {@link LexException}
+ * （PG 的 dollar-quoted 字符串以 {@code $} 起始，落入非法字符即显式拒绝）。标识符 ASCII。</p>
  */
 public final class Lexer {
 
     private final String sql;
     private final int length;
+    private final LexerConfig config;
 
-    /** 反斜杠转义开关（MySQL 默认开，NO_BACKSLASH_ESCAPES 关）。 */
-    private final boolean backslashEscapes = true;
-
-    private Lexer(final String sql) {
+    private Lexer(final String sql, final LexerConfig config) {
         this.sql = Objects.requireNonNull(sql, "sql");
         this.length = sql.length();
+        this.config = Objects.requireNonNull(config, "config");
     }
 
-    /** 单条 SQL 的完整 token 序列（末尾恒为 EOF 哨兵）。 */
+    /** 单条 SQL 的完整 token 序列（MySQL 默认词法；末尾恒为 EOF 哨兵）。 */
     public static List<Token> lex(final String sql) {
-        return new Lexer(sql).run();
+        return lex(sql, LexerConfig.MY_SQL);
+    }
+
+    /** 单条 SQL 的完整 token 序列（方言词法配置；末尾恒为 EOF 哨兵）。 */
+    public static List<Token> lex(final String sql, final LexerConfig config) {
+        return new Lexer(sql, config).run();
     }
 
     private List<Token> run() {
@@ -50,10 +53,14 @@ public final class Lexer {
             final char c = sql.charAt(i);
             if (isWordStart(c)) {
                 i = scanWord(tokens, i);
-            } else if ('\'' == c || '"' == c) {
-                i = scanString(c, i, i, tokens);
-            } else if ('`' == c) {
-                i = scanQuotedIdentifier(i, tokens);
+            } else if ('\'' == c) {
+                i = scanString('\'', i, i, config.backslashEscapes(), tokens);
+            } else if ('"' == c) {
+                // 双引号身份由方言开关定：ANSI 包裹标识符（PG）或字符串（MySQL）
+                i = config.ansiQuotes() ? scanQuotedIdentifier('"', i, tokens)
+                        : scanString('"', i, i, config.backslashEscapes(), tokens);
+            } else if ('`' == c && config.backtickQuotes()) {
+                i = scanQuotedIdentifier('`', i, tokens);
             } else if (isDigit(c) || ('.' == c && i + 1 < length && isDigit(sql.charAt(i + 1)))) {
                 i = scanNumber(i, tokens);
             } else if ('.' == c) {
@@ -75,15 +82,17 @@ public final class Lexer {
         while (i < length && isWordChar(sql.charAt(i))) {
             i += 1;
         }
-        // 单字母 N/X/B 紧邻单引号 → 引导字符串字面量（N'..' X'..' B'..'）
+        // 单字母引导字符串前缀紧邻单引号 → 字面量并入 STRING（MySQL N/X/B，PG E/B/X）
         if (i - start == 1 && i < length && '\'' == sql.charAt(i)) {
             final char lead = sql.charAt(start);
-            if ('N' == lead || 'n' == lead || 'X' == lead || 'x' == lead || 'B' == lead || 'b' == lead) {
-                return scanString('\'', i, start, tokens);
+            if (config.isStringPrefix(lead)) {
+                // 强制转义前缀（PG 的 E）无视全局开关恒做反斜杠转义
+                final boolean escapes = config.forcesEscape(lead) || config.backslashEscapes();
+                return scanString('\'', i, start, escapes, tokens);
             }
         }
         final String word = sql.substring(start, i);
-        final Kw kw = KeywordTable.lookupMySql(word);
+        final Kw kw = config.keywords().lookup(word);
         if (null != kw) {
             tokens.add(new Token(TokenType.KEYWORD, word, start, i - 1, kw));
         } else {
@@ -95,11 +104,12 @@ public final class Lexer {
     // ---------- 字符串 / 包裹标识符 ----------
 
     /** 开引号位于 openAt，token 起点为 tokenStart（引导前缀时早于 openAt）。文本含引号与前缀原文。 */
-    private int scanString(final char quote, final int openAt, final int tokenStart, final List<Token> tokens) {
+    private int scanString(final char quote, final int openAt, final int tokenStart, final boolean escapes,
+                           final List<Token> tokens) {
         int i = openAt + 1;
         while (i < length) {
             final char c = sql.charAt(i);
-            if ('\\' == c && backslashEscapes) {
+            if ('\\' == c && escapes) {
                 i += 2;
                 continue;
             }
@@ -116,11 +126,12 @@ public final class Lexer {
         throw new LexException("未闭合的字符串字面量", tokenStart);
     }
 
-    private int scanQuotedIdentifier(final int start, final List<Token> tokens) {
+    /** 包裹标识符（反引号或 ANSI 双引号）：包裹符双写转义，永不查关键字表。 */
+    private int scanQuotedIdentifier(final char quote, final int start, final List<Token> tokens) {
         int i = start + 1;
         while (i < length) {
-            if ('`' == sql.charAt(i)) {
-                if (i + 1 < length && '`' == sql.charAt(i + 1)) {
+            if (quote == sql.charAt(i)) {
+                if (i + 1 < length && quote == sql.charAt(i + 1)) {
                     i += 2;
                     continue;
                 }
@@ -296,13 +307,14 @@ public final class Lexer {
                 i += 1;
                 continue;
             }
-            if ('#' == c) {
+            if ('#' == c && config.hashLineComments()) {
                 i = skipLineComment(i + 1);
                 continue;
             }
-            // MySQL 规则：-- 后须跟空白/EOL 才是行注释，"--x" 为两个减号
+            // MySQL 规则：-- 后须跟空白/EOL 才是行注释，"--x" 为两个减号；PG 无此要求恒为注释
             if ('-' == c && i + 1 < length && '-' == sql.charAt(i + 1)
-                    && (i + 2 >= length || isSpaceOrLineBreak(sql.charAt(i + 2)))) {
+                    && (!config.lineCommentRequiresWhitespace()
+                    || i + 2 >= length || isSpaceOrLineBreak(sql.charAt(i + 2)))) {
                 i = skipLineComment(i + 2);
                 continue;
             }
@@ -323,10 +335,24 @@ public final class Lexer {
         return i;
     }
 
+    /** 块注释：方言开关定嵌套（PG 深度计数配对，MySQL 首个 {@code *&#47;} 即闭合）。 */
     private int skipBlockComment(final int start) {
+        int depth = 1;
         for (int i = start + 2; i < length; i++) {
             if ('*' == sql.charAt(i) && i + 1 < length && '/' == sql.charAt(i + 1)) {
-                return i + 2;
+                if (!config.nestedBlockComments()) {
+                    return i + 2;
+                }
+                depth -= 1;
+                i += 1;
+                if (0 == depth) {
+                    return i + 1;
+                }
+                continue;
+            }
+            if (config.nestedBlockComments() && '/' == sql.charAt(i) && i + 1 < length && '*' == sql.charAt(i + 1)) {
+                depth += 1;
+                i += 1;
             }
         }
         throw new LexException("未闭合的块注释", start);

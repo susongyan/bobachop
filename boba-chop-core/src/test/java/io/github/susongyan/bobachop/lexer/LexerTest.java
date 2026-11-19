@@ -32,10 +32,12 @@ class LexerTest {
         assertEquals(Kw.ORDER, Lexer.lex("ORDER").get(0).kw());
         assertEquals(TokenType.IDENTIFIER, Lexer.lex("offsetx").get(0).type());
         assertTok(Lexer.lex("offset").get(0), TokenType.KEYWORD, "offset", 0, 5, Kw.OFFSET);
-        assertFalse(Kw.OFFSET.reserved());
-        assertFalse(Kw.DUPLICATE.reserved());
-        assertFalse(Kw.ESCAPE.reserved());
-        assertTrue(Kw.SELECT.reserved());
+        // 保留字裁决自 T10 起为方言关键字表数据（Kw.reserved() 移除）
+        final KeywordTable mySql = KeywordTable.mySql();
+        assertFalse(mySql.reserved(Kw.OFFSET));
+        assertFalse(mySql.reserved(Kw.DUPLICATE));
+        assertFalse(mySql.reserved(Kw.ESCAPE));
+        assertTrue(mySql.reserved(Kw.SELECT));
         assertEquals(TokenType.IDENTIFIER, Lexer.lex("a$b").get(0).type());
     }
 

@@ -24,6 +24,7 @@ import io.github.susongyan.bobachop.ast.Star;
 import io.github.susongyan.bobachop.ast.SubqueryExpr;
 import io.github.susongyan.bobachop.ast.UnaryExpr;
 import io.github.susongyan.bobachop.ast.WhenClause;
+import io.github.susongyan.bobachop.dialect.DialectProfile;
 import io.github.susongyan.bobachop.exception.ParseException;
 import io.github.susongyan.bobachop.exception.UnsupportedSyntaxException;
 import io.github.susongyan.bobachop.lexer.Kw;
@@ -84,17 +85,23 @@ public final class ExprParser {
 
     private final TokenBuffer buffer;
     private final SubqueryBridge subqueries;
+    private final DialectProfile profile;
 
     /** 参数下标按访问序分配（白名单构造内访问序 = 文本序）。 */
     private int paramCounter;
 
     public ExprParser(final TokenBuffer buffer) {
-        this(buffer, NO_SUBQUERY);
+        this(buffer, NO_SUBQUERY, DialectProfile.MYSQL);
     }
 
     public ExprParser(final TokenBuffer buffer, final SubqueryBridge subqueries) {
+        this(buffer, subqueries, DialectProfile.MYSQL);
+    }
+
+    public ExprParser(final TokenBuffer buffer, final SubqueryBridge subqueries, final DialectProfile profile) {
         this.buffer = buffer;
         this.subqueries = subqueries;
+        this.profile = profile;
     }
 
     /** 已分配的参数标记个数（0 起计，下标上限 = 此值）。 */
@@ -226,7 +233,7 @@ public final class ExprParser {
             final Token rparen = expectType(TokenType.RPAREN, "EXISTS 子查询后的 )");
             return new ExistsExpr(token.start(), rparen.stop(), query);
         }
-        if (!kw.reserved()) {
+        if (!profile.reserved(kw)) {
             return parseNameOrCall();
         }
         // 保留字函数名（如 CONVERT(a, CHAR)）：合法 MySQL 但 v1 白名单外，走白名单拒绝而非语法错误
@@ -290,7 +297,7 @@ public final class ExprParser {
     private Expr parseNameOrCall() {
         final Token first = buffer.peek(0);
         final boolean callable = TokenType.IDENTIFIER == first.type()
-                || TokenType.KEYWORD == first.type() && !first.kw().reserved();
+                || TokenType.KEYWORD == first.type() && !profile.reserved(first.kw());
         if (callable && TokenType.LPAREN == buffer.peek(1).type()) {
             return parseFunctionCall(first);
         }
@@ -332,7 +339,7 @@ public final class ExprParser {
 
     private boolean isNamePart(final Token token) {
         return TokenType.IDENTIFIER == token.type() || TokenType.QUOTED_IDENTIFIER == token.type()
-                || TokenType.KEYWORD == token.type() && !token.kw().reserved();
+                || TokenType.KEYWORD == token.type() && !profile.reserved(token.kw());
     }
 
     private Expr parseFunctionCall(final Token nameToken) {

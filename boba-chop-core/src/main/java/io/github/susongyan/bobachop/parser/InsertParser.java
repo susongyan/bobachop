@@ -13,6 +13,7 @@ import io.github.susongyan.bobachop.ast.SelectSource;
 import io.github.susongyan.bobachop.ast.Statement;
 import io.github.susongyan.bobachop.ast.TableName;
 import io.github.susongyan.bobachop.ast.ValuesSource;
+import io.github.susongyan.bobachop.dialect.DialectProfile;
 import io.github.susongyan.bobachop.exception.ParseException;
 import io.github.susongyan.bobachop.exception.UnsupportedSyntaxException;
 import io.github.susongyan.bobachop.lexer.Kw;
@@ -37,11 +38,14 @@ public final class InsertParser {
     private final TokenBuffer buffer;
     private final ExprParser exprs;
     private final SelectParser selects;
+    private final DialectProfile profile;
 
-    InsertParser(final TokenBuffer buffer, final ExprParser exprs, final SelectParser selects) {
+    InsertParser(final TokenBuffer buffer, final ExprParser exprs, final SelectParser selects,
+                 final DialectProfile profile) {
         this.buffer = buffer;
         this.exprs = exprs;
         this.selects = selects;
+        this.profile = profile;
     }
 
     Statement parseStatement() {
@@ -68,6 +72,10 @@ public final class InsertParser {
         }
         List<Assignment> onDuplicateKey = null;
         if (buffer.peek(0).isKw(Kw.ON)) {
+            // PG 的 ON CONFLICT 为合法语法但 v1 白名单外，前置归类（CONFLICT 仅 PG 关键字，MySQL 恒不触发）
+            if (buffer.peek(1).isKw(Kw.CONFLICT)) {
+                throw unsupported("ON CONFLICT upsert 形态", buffer.peek(0));
+            }
             buffer.next();
             expectKw(Kw.DUPLICATE, "ON DUPLICATE 的 DUPLICATE");
             expectKw(Kw.KEY, "ON DUPLICATE KEY 的 KEY");
@@ -207,7 +215,7 @@ public final class InsertParser {
 
     private boolean isNameToken(final Token token) {
         return TokenType.IDENTIFIER == token.type() || TokenType.QUOTED_IDENTIFIER == token.type()
-                || TokenType.KEYWORD == token.type() && !token.kw().reserved();
+                || TokenType.KEYWORD == token.type() && !profile.reserved(token.kw());
     }
 
     private Token expectName(final String what) {

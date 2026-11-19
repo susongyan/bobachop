@@ -1,0 +1,43 @@
+-- BobaChop corpus: PostgreSQL SELECT v1 白名单形态（每行一条；空行与本形态注释行跳过）
+-- 基本形态与投影（ANSI 双引号标识符为 PG 专属形态锚）
+SELECT 1
+SELECT * FROM t_order
+SELECT id, user_id AS uid, amount FROM t_order
+SELECT DISTINCT status FROM t_order
+SELECT "user id", t."name" FROM public."user table" ut
+SELECT o.id FROM t_order AS o WHERE o.amount > 100
+-- 表连接（INNER/LEFT/RIGHT/CROSS 与 USING）
+SELECT o.id, u.name FROM t_order o INNER JOIN t_user u ON o.user_id = u.id
+SELECT * FROM t_order o LEFT OUTER JOIN t_user u ON o.user_id = u.id
+SELECT * FROM t_order RIGHT JOIN t_user u ON o.user_id = u.id
+SELECT o.id FROM t_order o CROSS JOIN t_user u
+SELECT * FROM t_order o JOIN t_user u USING (user_id)
+SELECT * FROM t_order o, t_user u WHERE o.user_id = u.id
+-- WHERE 表达式（E'' 前缀字符串 / 标准字符串 / 时间字面量）
+SELECT id FROM t_order WHERE name = E'a\'b'
+SELECT id FROM t_order WHERE note = 'x\y'
+SELECT id FROM t_order WHERE created_at < TIMESTAMP '2026-01-01 00:00:00'
+SELECT id FROM t_order WHERE amount BETWEEN 10 AND 100 AND status = 'PAID'
+SELECT id FROM t_order WHERE note NOT LIKE '%tmp%' ESCAPE '\'
+SELECT id FROM t_order WHERE user_id IN (1, 2, 3)
+SELECT id FROM t_order WHERE EXISTS (SELECT 1 FROM t_item i WHERE i.order_id = t_order.id)
+SELECT id FROM t_order WHERE amount > (SELECT AVG(amount) FROM t_order)
+-- 分组聚合与 CASE
+SELECT user_id, COUNT(*) FROM t_order GROUP BY user_id HAVING COUNT(*) > 3
+SELECT CASE WHEN amount > 100 THEN 'BIG' ELSE 'SMALL' END FROM t_order
+SELECT status, SUM(amount) AS total FROM t_order GROUP BY status ORDER BY total DESC
+-- 排序与分页（PG 专属形态锚：OFFSET/FETCH FIRST 族）
+SELECT id FROM t_order ORDER BY id LIMIT 10
+SELECT id FROM t_order ORDER BY id LIMIT 5 OFFSET 20
+SELECT id FROM t_order ORDER BY id LIMIT ? OFFSET ?
+SELECT id FROM t_order OFFSET 30 ROWS FETCH FIRST 10 ROWS ONLY
+SELECT id FROM t_order FETCH FIRST 10 ROWS ONLY
+SELECT id FROM t_order FETCH NEXT 1 ROW ONLY
+-- 派生表与子查询
+SELECT x.id FROM (SELECT id FROM t_order WHERE amount > 50) x
+SELECT * FROM (SELECT user_id, COUNT(*) c FROM t_order GROUP BY user_id) d WHERE d.c > 2
+-- UNION 链
+SELECT id FROM t_order UNION SELECT id FROM t_history
+SELECT id FROM t_order UNION ALL SELECT id FROM t_history
+-- 非保留字作标识符（PG 附录 C 非保留：row/next/values 等）
+SELECT next, row FROM values

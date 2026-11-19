@@ -21,6 +21,7 @@ import io.github.susongyan.bobachop.ast.SetOperator;
 import io.github.susongyan.bobachop.ast.Statement;
 import io.github.susongyan.bobachop.ast.TableName;
 import io.github.susongyan.bobachop.ast.TableRef;
+import io.github.susongyan.bobachop.dialect.DialectProfile;
 import io.github.susongyan.bobachop.exception.ParseException;
 import io.github.susongyan.bobachop.exception.UnsupportedSyntaxException;
 import io.github.susongyan.bobachop.lexer.Kw;
@@ -32,23 +33,28 @@ import io.github.susongyan.bobachop.lexer.TokenType;
  * SELECT 语句语法器主干（DESIGN §7.3：顶层按首 token 分派；每构造一函数，函数即白名单条目）。
  *
  * <p><b>v1 白名单</b>：投影（含别名）/DISTINCT/ALL、FROM（具名表/派生表/JOIN：INNER/LEFT/RIGHT/CROSS/
- * STRAIGHT_JOIN(归入 INNER)/逗号连接，ON/USING）、WHERE/GROUP BY/HAVING/ORDER BY、
- * LIMIT 三形态（{@code LIMIT n} / {@code LIMIT o, n} / {@code LIMIT n OFFSET o}）、
- * UNION [ALL] 链、子查询（经 {@link ExprParser} 桥接）。</p>
+ * STRAIGHT_JOIN(归入 INNER，MySQL)/逗号连接，ON/USING）、WHERE/GROUP BY/HAVING/ORDER BY、
+ * 分页（方言形态经 DialectProfile：MySQL 三形态 {@code LIMIT n} / {@code LIMIT o, n} /
+ * {@code LIMIT n OFFSET o}；PG {@code LIMIT n [OFFSET m]} 与 SQL 标准
+ * {@code [OFFSET m] FETCH {FIRST|NEXT} n ROW[S] ONLY}）、UNION [ALL] 链、
+ * 子查询（经 {@link ExprParser} 桥接）。</p>
  *
  * <p><b>v1 白名单外</b>：UNION 后的复合级 ORDER BY/LIMIT（AST 契约 CompoundSelect 无尾锚，后续以
  * 追加可空字段演进）、括号化表引用/括号化复合查询、WITH ROLLUP、FOR UPDATE/LOCK IN SHARE MODE、
- * 多级限定表名（db.t 为上限）、LIMIT 实参非数字字面量或参数标记。</p>
+ * 多级限定表名（db.t 为上限）、分页实参非数字字面量或参数标记、LIMIT ALL、裸 OFFSET（无
+ * LIMIT/FETCH；契约 Limit.rowCount 必填）、EXCEPT/INTERSECT 集合运算、FULL JOIN、LATERAL 派生表。</p>
  */
 public final class SelectParser {
 
     private final TokenBuffer buffer;
     private final ExprParser exprs;
+    private final DialectProfile profile;
 
-    /** 共享 buffer/exprs 由语句级 {@link Parser} 装配（子查询桥接与 insert-select 复用本类）。 */
-    SelectParser(final TokenBuffer buffer, final ExprParser exprs) {
+    /** 共享 buffer/exprs/profile 由语句级 {@link Parser} 装配（子查询桥接与 insert-select 复用本类）。 */
+    SelectParser(final TokenBuffer buffer, final ExprParser exprs, final DialectProfile profile) {
         this.buffer = buffer;
         this.exprs = exprs;
+        this.profile = profile;
     }
 
     /** 语句级 SELECT 入口（Parser 分派后到达）：查询体 + 白名单外尾部构造检查。 */
@@ -57,7 +63,8 @@ public final class SelectParser {
         final Token trailing = buffer.peek(0);
         // 已知白名单外尾部构造显式归 UnsupportedSyntaxException；其余尾部 token 由 Parser 按语法错误定性
         if (trailing.isKw(Kw.FOR) || trailing.isKw(Kw.LOCK) || trailing.isKw(Kw.WINDOW)
-                || trailing.isKw(Kw.NATURAL) || trailing.isKw(Kw.INTO) || trailing.isKw(Kw.PROCEDURE)) {
+                || trailing.isKw(Kw.NATURAL) || trailing.isKw(Kw.INTO) || trailing.isKw(Kw.PROCEDURE)
+                || trailing.isKw(Kw.EXCEPT) || trailing.isKw(Kw.INTERSECT)) {
             throw unsupported("SELECT 尾部构造 '" + trailing.text() + "'", trailing);
         }
         return (Statement) query;
@@ -85,8 +92,10 @@ public final class SelectParser {
             operators.add(operator);
             queries.add(parseSimpleSelect(true));
         }
-        // 契约 v1：CompoundSelect 无尾锚，复合级 ORDER BY/LIMIT 白名单外
-        if (buffer.peek(0).isKw(Kw.ORDER) || buffer.peek(0).isKw(Kw.LIMIT)) {
+        // 契约 v1：CompoundSelect 无尾锚，复合级 ORDER BY/LIMIT（PG 含 OFFSET/FETCH 族）白名单外
+        if (buffer.peek(0).isKw(Kw.ORDER) || buffer.peek(0).isKw(Kw.LIMIT)
+                || profile.fetchFirstPagination()
+                && (buffer.peek(0).isKw(Kw.OFFSET) || buffer.peek(0).isKw(Kw.FETCH))) {
             throw unsupported("UNION 复合级 ORDER BY/LIMIT（待契约追加尾锚字段）", buffer.peek(0));
         }
         return new CompoundSelect(first.start(), lastStop(), queries, operators);
@@ -175,8 +184,9 @@ public final class SelectParser {
                     break;
                 }
             }
-            if (buffer.peek(0).isKw(Kw.LIMIT)) {
-                limit = parseLimit();
+            if (buffer.peek(0).isKw(Kw.LIMIT) || profile.fetchFirstPagination()
+                    && (buffer.peek(0).isKw(Kw.OFFSET) || buffer.peek(0).isKw(Kw.FETCH))) {
+                limit = parsePagination();
             }
         }
         return new SelectStatement(select.start(), lastStop(), distinct, items, from, where, groupBy, having,
@@ -193,6 +203,10 @@ public final class SelectParser {
                 final TableRef right = parseTableFactor();
                 left = new Join(left.start(), lastStop(), left, JoinType.COMMA, right, null, null);
                 continue;
+            }
+            // FULL 出现在连接位 = FULL JOIN 意图（PG 保留字不可作别名；MySQL 无此词恒不触发）
+            if (buffer.peek(0).isKw(Kw.FULL)) {
+                throw unsupported("FULL JOIN（JoinType 无 FULL，待契约演进）", buffer.peek(0));
             }
             final JoinType type = joinKeywordAhead();
             if (null == type) {
@@ -272,6 +286,10 @@ public final class SelectParser {
 
     private TableRef parseTableFactor() {
         final Token first = buffer.peek(0);
+        // LATERAL 派生表为合法 PG 语法但 v1 白名单外，前置归类（仅 PG 关键字，MySQL 恒不触发）
+        if (first.isKw(Kw.LATERAL)) {
+            throw unsupported("LATERAL 派生表", first);
+        }
         if (TokenType.LPAREN == first.type()) {
             if (buffer.peek(1).isKw(Kw.SELECT)) {
                 buffer.next();
@@ -304,13 +322,27 @@ public final class SelectParser {
         return new TableName(first.start(), stop, qualifier, name.text(), null != alias ? alias.text() : null);
     }
 
-    // ---------- LIMIT ----------
+    // ---------- 分页（方言形态，语义槽位统一 ast.Limit） ----------
 
-    /** LIMIT n / LIMIT o, n / LIMIT n OFFSET o（实参仅数字字面量或参数标记，白名单窄口）。 */
+    /** 分派：LIMIT 起步（两方言）；PG 另收 SQL 标准 OFFSET ... FETCH / FETCH FIRST 族。 */
+    private Limit parsePagination() {
+        if (buffer.peek(0).isKw(Kw.LIMIT)) {
+            return parseLimit();
+        }
+        return parsePgOffsetFetch();
+    }
+
+    /** LIMIT n / LIMIT o, n（MySQL 专有）/ LIMIT n OFFSET o（实参仅数字字面量或参数标记，白名单窄口）。 */
     private Limit parseLimit() {
         final Token limitToken = buffer.next();
+        if (buffer.peek(0).isKw(Kw.ALL)) {
+            throw unsupported("LIMIT ALL（无计数形态）", buffer.peek(0));
+        }
         final Expr first = parseLimitArg();
         if (TokenType.COMMA == buffer.peek(0).type()) {
+            if (!profile.limitCommaOffset()) {
+                throw new ParseException("LIMIT 逗号形态为 MySQL 专有: " + buffer.peek(0), buffer.peek(0).start());
+            }
             buffer.next();
             final Expr second = parseLimitArg();
             return new Limit(limitToken.start(), second.stop(), first, second);
@@ -318,9 +350,59 @@ public final class SelectParser {
         if (buffer.peek(0).isKw(Kw.OFFSET)) {
             buffer.next();
             final Expr offset = parseLimitArg();
-            return new Limit(limitToken.start(), offset.stop(), offset, first);
+            if (profile.fetchFirstPagination()) {
+                skipRowsSuffix();
+                if (buffer.peek(0).isKw(Kw.FETCH)) {
+                    throw unsupported("LIMIT 与 FETCH 并用", buffer.peek(0));
+                }
+            }
+            return new Limit(limitToken.start(), lastStop(), offset, first);
+        }
+        if (profile.fetchFirstPagination() && buffer.peek(0).isKw(Kw.FETCH)) {
+            throw unsupported("LIMIT 与 FETCH 并用", buffer.peek(0));
         }
         return new Limit(limitToken.start(), first.stop(), null, first);
+    }
+
+    /** PG 标准分页：{@code [OFFSET m [ROW|ROWS]] FETCH {FIRST|NEXT} n [ROW|ROWS] ONLY}。 */
+    private Limit parsePgOffsetFetch() {
+        final Token start = buffer.next();
+        Expr offset = null;
+        if (start.isKw(Kw.OFFSET)) {
+            offset = parseLimitArg();
+            skipRowsSuffix();
+            if (!buffer.peek(0).isKw(Kw.FETCH)) {
+                throw unsupported("裸 OFFSET（无 LIMIT/FETCH；契约 Limit.rowCount 必填，待契约演进）",
+                        buffer.peek(0));
+            }
+            buffer.next();
+        }
+        final Token kind = buffer.peek(0);
+        if (!kind.isKw(Kw.FIRST) && !kind.isKw(Kw.NEXT)) {
+            throw new ParseException("期望 FETCH FIRST/NEXT 但为 " + kind, kind.start());
+        }
+        buffer.next();
+        if (buffer.peek(0).isKw(Kw.ROW) || buffer.peek(0).isKw(Kw.ROWS)) {
+            throw unsupported("FETCH 省略计数（隐含 1，无字面锚点）", buffer.peek(0));
+        }
+        final Expr count = parseLimitArg();
+        if (!buffer.peek(0).isKw(Kw.ROW) && !buffer.peek(0).isKw(Kw.ROWS)) {
+            throw new ParseException("期望 ROW 或 ROWS 但为 " + buffer.peek(0), buffer.peek(0).start());
+        }
+        buffer.next();
+        final Token only = buffer.peek(0);
+        if (!only.isKw(Kw.ONLY)) {
+            throw new ParseException("期望 FETCH ... ONLY 但为 " + only, only.start());
+        }
+        buffer.next();
+        return new Limit(start.start(), lastStop(), offset, count);
+    }
+
+    /** OFFSET 计数后的可选 ROW/ROWS 后缀（PG 语法糖，无 AST 锚点差异）。 */
+    private void skipRowsSuffix() {
+        if (buffer.peek(0).isKw(Kw.ROW) || buffer.peek(0).isKw(Kw.ROWS)) {
+            buffer.next();
+        }
     }
 
     private Expr parseLimitArg() {
@@ -357,7 +439,7 @@ public final class SelectParser {
 
     private boolean isNameToken(final Token token) {
         return TokenType.IDENTIFIER == token.type() || TokenType.QUOTED_IDENTIFIER == token.type()
-                || TokenType.KEYWORD == token.type() && !token.kw().reserved();
+                || TokenType.KEYWORD == token.type() && !profile.reserved(token.kw());
     }
 
     private Token expectName(final String what) {

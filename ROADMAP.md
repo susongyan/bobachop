@@ -24,5 +24,5 @@
 - [x] T7 SelectParser 主干（冻结 2026-11-19，DESIGN v1.9；api.BobaChop 入口 + BobachopExecutor + corpus select-v1 41 条 + 21 黄金用例；ANTLR4 参考执行器适配为独立跟进项）
 - [x] T8 InsertParser/UpdateParser/DeleteParser（冻结 2026-11-19，DESIGN v2.0；语句级 Parser 分派器 + INSERT/UPDATE/DELETE 白名单 + corpus dml-v1 26 条 + 19 黄金用例）
 - [x] T9 bench 套件（冻结 2026-11-19，DESIGN v2.1；四场景 + 收敛口径 KPI 可测化，首轮实测达标）
-- [ ] T10 PostgreSQL Profile + 构造（进行中）
+- [ ] T10 PostgreSQL Profile + 构造（已提交待评审：DialectProfile/LexerConfig/KeywordTable 数据化 + PG 词法/分页族/白名单归类 + corpus pg/select-v1 33 条 + PgLexer/PgParser 21 黄金用例）
 - [ ] T11 Oracle Profile + 构造

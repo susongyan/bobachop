@@ -7,6 +7,7 @@ import io.github.susongyan.bobachop.ast.DeleteStatement;
 import io.github.susongyan.bobachop.ast.Expr;
 import io.github.susongyan.bobachop.ast.Statement;
 import io.github.susongyan.bobachop.ast.TableName;
+import io.github.susongyan.bobachop.dialect.DialectProfile;
 import io.github.susongyan.bobachop.exception.ParseException;
 import io.github.susongyan.bobachop.exception.UnsupportedSyntaxException;
 import io.github.susongyan.bobachop.lexer.Kw;
@@ -25,10 +26,12 @@ public final class DeleteParser {
 
     private final TokenBuffer buffer;
     private final ExprParser exprs;
+    private final DialectProfile profile;
 
-    DeleteParser(final TokenBuffer buffer, final ExprParser exprs) {
+    DeleteParser(final TokenBuffer buffer, final ExprParser exprs, final DialectProfile profile) {
         this.buffer = buffer;
         this.exprs = exprs;
+        this.profile = profile;
     }
 
     Statement parseStatement() {
@@ -88,7 +91,7 @@ public final class DeleteParser {
 
     private boolean isNameToken(final Token token) {
         return TokenType.IDENTIFIER == token.type() || TokenType.QUOTED_IDENTIFIER == token.type()
-                || TokenType.KEYWORD == token.type() && !token.kw().reserved();
+                || TokenType.KEYWORD == token.type() && !profile.reserved(token.kw());
     }
 
     private Token expectName(final String what) {

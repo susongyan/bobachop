@@ -30,6 +30,11 @@ public final class TokenBuffer {
         this(sql, Lexer.lex(sql));
     }
 
+    /** 方言词法构造（T10：lexerConfig 由 DialectProfile 装配）。 */
+    public TokenBuffer(final String sql, final LexerConfig config) {
+        this(sql, Lexer.lex(sql, config));
+    }
+
     /** source 可空：为空时语法器对限定名/时间字面量等跨 token 原文退化为 token 拼接。 */
     public TokenBuffer(final String source, final List<Token> tokens) {
         final List<Token> copy = new ArrayList<Token>(Objects.requireNonNull(tokens, "tokens"));
