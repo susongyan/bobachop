@@ -9,7 +9,7 @@
 | M1 | MySQL lexer + TokenBuffer + Pratt + SELECT 主干 | T4–T7 | 2.5–3.5 周 | 12 月 | ✅ 完成（T4–T7 冻结，2026-11-19；ANTLR4 参考对拍适配为跟进项） |
 | M2 | MySQL INSERT 全家 + UPDATE/DELETE | T8–T9 | 1.5–2.5 周 | 12 月末–1 月初 | ✅ 完成（T8–T9 冻结，2026-11-19；bench 首轮 KPI 达标，同机对拍随参考执行器跟进） |
 | M3 | PostgreSQL profile + 白名单构造 | T10 | 1.5–2 周 | 1 月中 | ✅ 完成（T10 冻结，2026-11-19，DESIGN v2.2） |
-| M4 | Oracle profile + 白名单构造 | T11 | 1.5–2 周 | 1 月末 | 未开始 |
+| M4 | Oracle profile + 白名单构造 | T11 | 1.5–2 周 | 1 月末 | ✅ 完成（T11 冻结，2026-11-19，DESIGN v2.3） |
 
 对外依赖：无。下游约定：boba-pour 的 M0 依赖本仓 T2（AST 冻结）、M2 依赖本仓 M1。
 
@@ -25,4 +25,4 @@
 - [x] T8 InsertParser/UpdateParser/DeleteParser（冻结 2026-11-19，DESIGN v2.0；语句级 Parser 分派器 + INSERT/UPDATE/DELETE 白名单 + corpus dml-v1 26 条 + 19 黄金用例）
 - [x] T9 bench 套件（冻结 2026-11-19，DESIGN v2.1；四场景 + 收敛口径 KPI 可测化，首轮实测达标）
 - [x] T10 PostgreSQL Profile + 构造（冻结 2026-11-19，DESIGN v2.2；方言数据化三件套 LexerConfig/KeywordTable/DialectProfile + PG 词法与分页族 + 白名单前置归类 + corpus pg/select-v1 33 条 + 21 黄金用例）
-- [ ] T11 Oracle Profile + 构造（已提交待评审：OracleDialect + Kw Oracle 段 47 词 + 标准分页族复用 + 伪列/层级/MERGE/多表 INSERT 前置归类 + joinStartAhead 别名消歧（修复 T10 连接词吞别名缺陷）+ corpus oracle/select-v1 38 条 + 20 黄金用例，146 测试全绿）
+- [x] T11 Oracle Profile + 构造（冻结 2026-11-19，DESIGN v2.3；OracleDialect + Kw Oracle 段 47 词 + 标准分页族复用（ast.Limit 槽位零改动）+ tableAliasAs 开关 + 伪列/层级/MERGE/多表 INSERT 前置归类 + joinStartAhead 别名消歧（修复 T10 连接词吞别名静默错树缺陷）+ MySQL DUAL 修正 + corpus oracle/select-v1 38 条 + 20 黄金用例，146 测试全绿）
