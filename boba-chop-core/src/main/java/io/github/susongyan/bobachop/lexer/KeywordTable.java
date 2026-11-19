@@ -60,13 +60,15 @@ public final class KeywordTable {
     private static Set<Kw> mySqlReserved() {
         final Set<Kw> reserved = mySqlKeywords();
         // MySQL 8.0 非保留（语法键控：LIMIT ... OFFSET / ON DUPLICATE KEY UPDATE /
-        // LIKE ... ESCAPE / DATE|TIME|TIMESTAMP '...' 时间字面量）
+        // LIKE ... ESCAPE / DATE|TIME|TIMESTAMP '...' 时间字面量 / FROM DUAL 虚表目标——
+        // 官方表标 R 但专用产式恒允许，作保留字会误拒 SELECT 1 FROM DUAL）
         reserved.remove(Kw.OFFSET);
         reserved.remove(Kw.DUPLICATE);
         reserved.remove(Kw.ESCAPE);
         reserved.remove(Kw.DATE);
         reserved.remove(Kw.TIME);
         reserved.remove(Kw.TIMESTAMP);
+        reserved.remove(Kw.DUAL);
         return reserved;
     }
 }

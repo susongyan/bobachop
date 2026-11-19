@@ -110,15 +110,113 @@ public enum Kw {
     /** PG 保留。 */
     USER,
     /** PG 保留。 */
-    VARIADIC;
+    VARIADIC,
+    // ---------- 方言追加段（T11 Oracle；MySQL/PG 关键字表均不含本段） ----------
+    /** Oracle 保留。 */
+    ACCESS,
+    /** Oracle 保留。 */
+    AUDIT,
+    /** Oracle 保留。 */
+    CLUSTER,
+    /** Oracle 保留。 */
+    COMMENT,
+    /** Oracle 保留。 */
+    COMPRESS,
+    /** Oracle 保留（层级查询 CONNECT BY；白名单外，尾部前置归类）。 */
+    CONNECT,
+    /** Oracle 保留。 */
+    CURRENT,
+    /** Oracle 保留（锁子句修饰；白名单外）。 */
+    EXCLUSIVE,
+    /** Oracle 保留。 */
+    FILE,
+    /** Oracle 保留。 */
+    IDENTIFIED,
+    /** Oracle 保留。 */
+    IMMEDIATE,
+    /** Oracle 保留。 */
+    INCREMENT,
+    /** Oracle 保留。 */
+    INITIAL,
+    /** Oracle 保留。 */
+    LEVEL,
+    /** Oracle 保留。 */
+    MAXEXTENTS,
+    /** Oracle 非保留（语法键控：MERGE 语句；白名单外，分派前置归类）。 */
+    MERGE,
+    /** Oracle 保留（集合运算 MINUS；白名单外，尾部前置归类）。 */
+    MINUS,
+    /** Oracle 保留。 */
+    MLSLABEL,
+    /** Oracle 保留。 */
+    MODE,
+    /** Oracle 保留。 */
+    MODIFY,
+    /** Oracle 保留。 */
+    NOAUDIT,
+    /** Oracle 保留。 */
+    NOCOMPRESS,
+    /** Oracle 保留（锁子句 NOWAIT；白名单外）。 */
+    NOWAIT,
+    /** Oracle 非保留（语法键控：ORDER BY ... NULLS FIRST/LAST；白名单外，前置归类）。 */
+    NULLS,
+    /** Oracle 保留。 */
+    NUMBER,
+    /** Oracle 保留。 */
+    OFFLINE,
+    /** Oracle 保留。 */
+    ONLINE,
+    /** Oracle 保留。 */
+    PCTFREE,
+    /** Oracle 保留（层级查询 START WITH；白名单外，尾部前置归类）。 */
+    START,
+    /** Oracle 保留（CONNECT BY 的 PRIOR；白名单外）。 */
+    PRIOR,
+    /** Oracle 保留。 */
+    PUBLIC,
+    /** Oracle 保留。 */
+    RAW,
+    /** Oracle 保留。 */
+    RESOURCE,
+    /** Oracle 保留。 */
+    ROWID,
+    /** Oracle 保留（ROWNUM 伪列；分页白名单外，表达式位前置归类）。 */
+    ROWNUM,
+    /** Oracle 保留。 */
+    SESSION,
+    /** Oracle 保留。 */
+    SHARE,
+    /** Oracle 保留。 */
+    SIZE,
+    /** Oracle 保留。 */
+    SUCCESSFUL,
+    /** Oracle 保留。 */
+    SYNONYM,
+    /** Oracle 保留。 */
+    SYSDATE,
+    /** Oracle 保留。 */
+    UID,
+    /** Oracle 保留。 */
+    VALIDATE,
+    /** Oracle 保留。 */
+    VARCHAR2,
+    /** Oracle 保留。 */
+    VIEW,
+    /** Oracle 保留。 */
+    WHENEVER;
 
-    /** 方言追加段（PostgreSQL 专有；MySQL 关键字表 = 全集 − 本段）。 */
+    /** 方言追加段（PostgreSQL/Oracle 专有；MySQL 关键字表 = 全集 − 本段）。 */
     private static final Set<Kw> DIALECT_ADDITIONS = Collections.unmodifiableSet(
             EnumSet.of(ANALYSE, ANY, ARRAY, ASYMMETRIC, CAST, CONFLICT, CURRENT_CATALOG, CURRENT_ROLE,
                     DEFERRABLE, DO, FIRST, FULL, INITIALLY, INTERSECT, NEXT, ONLY, PLACING, RETURNING,
-                    SESSION_USER, SOME, SYMMETRIC, USER, VARIADIC));
+                    SESSION_USER, SOME, SYMMETRIC, USER, VARIADIC,
+                    ACCESS, AUDIT, CLUSTER, COMMENT, COMPRESS, CONNECT, CURRENT, EXCLUSIVE, FILE,
+                    IDENTIFIED, IMMEDIATE, INCREMENT, INITIAL, LEVEL, MAXEXTENTS, MERGE, MINUS, MLSLABEL, MODE,
+                    MODIFY, NOAUDIT, NOCOMPRESS, NOWAIT, NULLS, NUMBER, OFFLINE, ONLINE, PCTFREE,
+                    PRIOR, PUBLIC, RAW, RESOURCE, ROWID, ROWNUM, SESSION, SHARE, SIZE, START,
+                    SUCCESSFUL, SYNONYM, SYSDATE, UID, VALIDATE, VARCHAR2, VIEW, WHENEVER));
 
-    /** 方言追加段只读视图（关键字表装配用；Oracle 到来时在此追加并同步本方法）。 */
+    /** 方言追加段只读视图（关键字表装配用）。 */
     public static Set<Kw> dialectAdditions() {
         return DIALECT_ADDITIONS;
     }

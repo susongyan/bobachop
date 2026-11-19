@@ -63,6 +63,25 @@ public final class DeleteParser {
                 || token.isKw(Kw.CROSS) || token.isKw(Kw.STRAIGHT_JOIN);
     }
 
+    /**
+     * 只读判断：当前位置是否连接词起点（D9 位置键控：PG/Oracle 下 JOIN/LEFT 等非保留字，
+     * 别名位遇连接延续让位给子句，避免 JOIN 被吞作裸别名）。
+     */
+    private boolean joinStartAhead() {
+        final Token token = buffer.peek(0);
+        final Token next = buffer.peek(1);
+        if (token.isKw(Kw.JOIN) || token.isKw(Kw.STRAIGHT_JOIN)) {
+            return isNameToken(next) || TokenType.LPAREN == next.type();
+        }
+        if (token.isKw(Kw.INNER) || token.isKw(Kw.CROSS)) {
+            return next.isKw(Kw.JOIN);
+        }
+        if (token.isKw(Kw.LEFT) || token.isKw(Kw.RIGHT) || token.isKw(Kw.FULL)) {
+            return next.isKw(Kw.JOIN) || next.isKw(Kw.OUTER);
+        }
+        return Kw.OUTER == token.kw();
+    }
+
     // ---------- 名字与工具 ----------
 
     private TableName parseTargetTable() {
@@ -80,9 +99,13 @@ public final class DeleteParser {
         final String qualifier = 2 == parts.size() ? parts.get(0).text() : null;
         Token alias = null;
         if (buffer.peek(0).isKw(Kw.AS)) {
+            if (!profile.tableAliasAs()) {
+                // Oracle 拒绝表别名 AS 引导（语法错误定性，非白名单外）
+                throw new ParseException("AS 引导表别名（本方言不允许）: " + buffer.peek(0), buffer.peek(0).start());
+            }
             buffer.next();
             alias = expectName("AS 后的表别名");
-        } else if (isNameToken(buffer.peek(0))) {
+        } else if (isNameToken(buffer.peek(0)) && !joinStartAhead()) {
             alias = buffer.next();
         }
         return new TableName(first.start(), null != alias ? alias.stop() : name.stop(), qualifier, name.text(),

@@ -82,4 +82,9 @@ final class PostgreSqlDialect extends DialectProfile {
     public boolean fetchFirstPagination() {
         return true;
     }
+
+    @Override
+    public boolean tableAliasAs() {
+        return true;
+    }
 }

@@ -13,6 +13,8 @@ import io.github.susongyan.bobachop.api.BobaChop;
 import io.github.susongyan.bobachop.ast.BinaryExpr;
 import io.github.susongyan.bobachop.ast.ColumnRef;
 import io.github.susongyan.bobachop.ast.InsertStatement;
+import io.github.susongyan.bobachop.ast.Join;
+import io.github.susongyan.bobachop.ast.JoinType;
 import io.github.susongyan.bobachop.ast.Limit;
 import io.github.susongyan.bobachop.ast.Literal;
 import io.github.susongyan.bobachop.ast.ParameterMarker;
@@ -159,5 +161,20 @@ final class PgParserTest {
         // JOIN/LEFT/VALUES/ROW 在 PG 为非保留字：可作未包裹标识符
         assertEquals("row", ((TableName) ((SelectStatement) pg("SELECT * FROM row")).from()).name());
         assertEquals(1, ((SelectStatement) pg("SELECT next FROM t")).items().size());
+    }
+
+    @Test
+    void 裸join关键字不作表别名_t11修复回归() {
+        // T10 缺陷：JOIN/LEFT 在 PG 为非保留字，表别名位被吞——裸 JOIN 失败、LEFT JOIN 静默错析为别名
+        final SelectStatement inner = (SelectStatement) pg("SELECT * FROM t1 JOIN t2 ON t1.id = t2.id");
+        assertNull(((TableName) ((Join) inner.from()).left()).alias());
+        final Join leftJoin = (Join) ((SelectStatement) pg("SELECT * FROM t1 LEFT JOIN t2 ON t1.id = t2.id")).from();
+        assertEquals(JoinType.LEFT, leftJoin.type());
+        assertNull(((TableName) leftJoin.left()).alias());
+        // 连接词后随非连接延续时仍可作裸别名（PG 本就允许）
+        assertEquals("left", ((TableName) ((SelectStatement) pg("SELECT * FROM t1 left")).from()).alias());
+        assertEquals("join", ((TableName) ((SelectStatement) pg("SELECT * FROM t1 join")).from()).alias());
+        // 派生表位同规：连接词紧跟即"缺别名"语法错误
+        assertThrows(ParseException.class, () -> pg("SELECT * FROM (SELECT 1 FROM x) LEFT JOIN t2 ON t2.id = 1"));
     }
 }

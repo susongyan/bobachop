@@ -1,0 +1,48 @@
+-- Oracle SELECT v1 形态语料（T11）：本内核 Oracle profile 全量解析绿
+-- 基础投影与别名（列位 AS 允许，表位仅裸别名）
+SELECT id, name AS user_name FROM users
+SELECT id user_name FROM users
+SELECT u.id, u.name FROM users u
+SELECT * FROM hr.employees
+SELECT COUNT(*) FROM orders
+SELECT DISTINCT status FROM orders
+-- ANSI 双引号标识符
+SELECT "user id", e."last name" FROM hr."emp table" "e"
+SELECT id FROM "order"
+-- 条件与运算符（|| 串接为既有中缀）
+SELECT id FROM t WHERE name = 'a' || 'b'
+SELECT id FROM t WHERE amount > 100 AND status = 'PAID'
+SELECT id FROM t WHERE created_at >= TIMESTAMP '2026-01-01 00:00:00'
+SELECT id FROM t WHERE d = DATE '2026-01-01'
+SELECT id FROM t WHERE name LIKE 'a%' ESCAPE '\'
+SELECT id FROM t WHERE id IN (1, 2, 3)
+SELECT id FROM t WHERE amount BETWEEN 10 AND 20
+SELECT id FROM t WHERE EXISTS (SELECT 1 FROM sub WHERE sub.id = t.id)
+SELECT id FROM t WHERE qty = ?
+SELECT id FROM t WHERE note IS NOT NULL
+-- DUAL 与序列
+SELECT 1 FROM dual
+SELECT seq_order.NEXTVAL FROM dual
+-- JOIN 家族
+SELECT * FROM t1 INNER JOIN t2 ON t1.id = t2.id
+SELECT * FROM t1 LEFT OUTER JOIN t2 ON t1.id = t2.id
+SELECT * FROM t1 RIGHT JOIN t2 ON t1.id = t2.id
+SELECT * FROM t1 JOIN t2 USING (id)
+SELECT * FROM t1, t2 WHERE t1.id = t2.id
+SELECT * FROM (SELECT id FROM base) d
+-- GROUP/HAVING/CASE
+SELECT status, COUNT(*) FROM orders GROUP BY status HAVING COUNT(*) > 5
+SELECT CASE WHEN amount > 0 THEN 'Y' ELSE 'N' END FROM orders
+SELECT id, CASE status WHEN 'A' THEN 1 ELSE 0 END AS flag FROM orders
+-- 排序与分页（12c+ 标准形态，复用 ast.Limit 槽位）
+SELECT id FROM t ORDER BY id
+SELECT id FROM t ORDER BY id DESC, name ASC
+SELECT id FROM t ORDER BY id OFFSET 10 ROWS FETCH NEXT 20 ROWS ONLY
+SELECT id FROM t OFFSET ? ROWS FETCH FIRST ? ROWS ONLY
+SELECT id FROM t FETCH FIRST 10 ROWS ONLY
+-- UNION 链
+SELECT id FROM a UNION SELECT id FROM b
+SELECT id FROM a UNION ALL SELECT id FROM b
+-- 注释形态（块注释嵌套、-- 恒注释）
+SELECT id /* 外 /* 内 */ 还在 */ FROM t
+SELECT id FROM t -- 行注释

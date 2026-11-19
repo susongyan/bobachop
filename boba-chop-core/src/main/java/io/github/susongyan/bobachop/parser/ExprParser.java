@@ -216,6 +216,10 @@ public final class ExprParser {
                 tok();
                 return new Literal(token.start(), str.stop(), LiteralKind.TEMPORAL, span(token, str, token.text() + str.text()));
             }
+            if (profile.reserved(kw)) {
+                // Oracle DATE 为保留字（PG/MySQL 非保留可作标识符）：无字面量后继时不可作列名
+                throw new ParseException("保留字出现在表达式起点: " + token, token.start());
+            }
             return parseNameOrCall();
         }
         if (Kw.CASE == kw) {
@@ -232,6 +236,12 @@ public final class ExprParser {
             final SelectQuery query = subqueries.parseSelectQuery();
             final Token rparen = expectType(TokenType.RPAREN, "EXISTS 子查询后的 )");
             return new ExistsExpr(token.start(), rparen.stop(), query);
+        }
+        // Oracle 伪列/层级/系统词（ROWNUM 分页、LEVEL/PRIOR 层级查询、SYSDATE/UID 会话值）：
+        // 合法 Oracle 语法但 v1 白名单外，前置归类（仅 Oracle 关键字，MySQL/PG 恒不触发；
+        // USER 同为 PG 保留字、T10 已冻结其 ParseException 分类，不并入本归类）
+        if (Kw.ROWNUM == kw || Kw.LEVEL == kw || Kw.PRIOR == kw || Kw.SYSDATE == kw || Kw.UID == kw) {
+            throw unsupported("Oracle 伪列/系统值 " + kw.name() + "（分页/层级/会话族白名单外）", token);
         }
         if (!profile.reserved(kw)) {
             return parseNameOrCall();

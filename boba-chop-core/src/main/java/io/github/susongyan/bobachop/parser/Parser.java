@@ -63,6 +63,9 @@ public final class Parser {
             statement = deletes.parseStatement();
         } else if (first.isKw(Kw.WITH)) {
             throw new UnsupportedSyntaxException("白名单外: CTE（WITH 子句）@" + first.start());
+        } else if (first.isKw(Kw.MERGE)) {
+            // MERGE 仅 Oracle 关键字（MySQL/PG 恒为标识符走"期望 DML"路径），合法 Oracle 语法前置归类
+            throw new UnsupportedSyntaxException("白名单外: MERGE 语句（Oracle upsert）@" + first.start());
         } else {
             throw new ParseException("期望 DML 语句但为 " + first, first.start());
         }

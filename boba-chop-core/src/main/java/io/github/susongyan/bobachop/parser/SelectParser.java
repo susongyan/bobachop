@@ -62,9 +62,11 @@ public final class SelectParser {
         final SelectQuery query = parseQueryBody();
         final Token trailing = buffer.peek(0);
         // 已知白名单外尾部构造显式归 UnsupportedSyntaxException；其余尾部 token 由 Parser 按语法错误定性
+        // （MINUS 集合运算 / START WITH / CONNECT BY 层级查询仅 Oracle 关键字，MySQL/PG 恒不触发）
         if (trailing.isKw(Kw.FOR) || trailing.isKw(Kw.LOCK) || trailing.isKw(Kw.WINDOW)
                 || trailing.isKw(Kw.NATURAL) || trailing.isKw(Kw.INTO) || trailing.isKw(Kw.PROCEDURE)
-                || trailing.isKw(Kw.EXCEPT) || trailing.isKw(Kw.INTERSECT)) {
+                || trailing.isKw(Kw.EXCEPT) || trailing.isKw(Kw.INTERSECT)
+                || trailing.isKw(Kw.MINUS) || trailing.isKw(Kw.START) || trailing.isKw(Kw.CONNECT)) {
             throw unsupported("SELECT 尾部构造 '" + trailing.text() + "'", trailing);
         }
         return (Statement) query;
@@ -117,7 +119,7 @@ public final class SelectParser {
         final List<SelectItem> items = new ArrayList<SelectItem>();
         while (true) {
             final Expr expr = exprs.parseExpr();
-            final Token alias = parseAlias();
+            final Token alias = parseAlias(true);
             items.add(new SelectItem(expr.start(), null != alias ? alias.stop() : expr.stop(), expr,
                     null != alias ? alias.text() : null));
             if (TokenType.COMMA == buffer.peek(0).type()) {
@@ -174,6 +176,12 @@ public final class SelectParser {
                     } else if (buffer.peek(0).isKw(Kw.DESC)) {
                         direction = OrderDirection.DESC;
                         buffer.next();
+                    }
+                    // Oracle NULLS FIRST/LAST：合法语法但 OrderDirection 无空值语义槽
+                    //（NULLS 仅 Oracle 关键字，MySQL/PG 恒不触发）
+                    if (buffer.peek(0).isKw(Kw.NULLS)) {
+                        throw unsupported("NULLS FIRST/LAST（OrderDirection 无空值语义槽，待契约演进）",
+                                buffer.peek(0));
                     }
                     final int stop = OrderDirection.UNSPECIFIED == direction ? expr.stop() : lastStop();
                     orderBy.add(new OrderByItem(expr.start(), stop, expr, direction));
@@ -246,6 +254,31 @@ public final class SelectParser {
         }
     }
 
+    /**
+     * 只读判断：当前位置是否连接词起点（D9 位置键控消歧：PG/Oracle 下 JOIN/LEFT 等为非保留字，
+     * 表别名位遇"后随连接延续"的连接词必须让位给子句——否则裸 {@code t1 JOIN t2} 失败、
+     * {@code t1 LEFT JOIN t2} 被静默错析为 t1 的别名）。OUTER 恒为连接语境（不独立引导但不可作表别名）。
+     */
+    private boolean joinStartAhead() {
+        final Token token = buffer.peek(0);
+        final Token next = buffer.peek(1);
+        if (token.isKw(Kw.JOIN) || token.isKw(Kw.STRAIGHT_JOIN)) {
+            // JOIN 后随表因子起点才算连接词，否则视为裸别名（EOF/子句词之后的 JOIN 可作别名）
+            return isNameToken(next) || TokenType.LPAREN == next.type();
+        }
+        if (token.isKw(Kw.INNER) || token.isKw(Kw.CROSS)) {
+            return next.isKw(Kw.JOIN);
+        }
+        if (token.isKw(Kw.LEFT) || token.isKw(Kw.RIGHT) || token.isKw(Kw.FULL)) {
+            return next.isKw(Kw.JOIN) || next.isKw(Kw.OUTER);
+        }
+        if (token.isKw(Kw.NATURAL)) {
+            return next.isKw(Kw.LEFT) || next.isKw(Kw.RIGHT) || next.isKw(Kw.INNER)
+                    || next.isKw(Kw.CROSS) || next.isKw(Kw.JOIN) || next.isKw(Kw.FULL);
+        }
+        return Kw.OUTER == token.kw();
+    }
+
     /** 只读判断：当前位置是否 JOIN 关键字形态（不改游标，D2 只读前瞻）。 */
     private JoinType joinKeywordAhead() {
         final Token token = buffer.peek(0);
@@ -295,7 +328,10 @@ public final class SelectParser {
                 buffer.next();
                 final SelectQuery query = parseQueryBody();
                 expectType(TokenType.RPAREN, "派生表后的 )");
-                final Token alias = parseAlias();
+                if (joinStartAhead()) {
+                    throw new ParseException("派生表需要别名", first.start());
+                }
+                final Token alias = parseAlias(profile.tableAliasAs());
                 if (null == alias) {
                     throw new ParseException("派生表需要别名", first.start());
                 }
@@ -317,7 +353,8 @@ public final class SelectParser {
         }
         final Token name = parts.get(parts.size() - 1);
         final String qualifier = 2 == parts.size() ? parts.get(0).text() : null;
-        final Token alias = parseAlias();
+        // 连接词起点让位给 JOIN 子句（D9 位置键控），不作裸别名
+        final Token alias = joinStartAhead() ? null : parseAlias(profile.tableAliasAs());
         final int stop = null != alias ? alias.stop() : name.stop();
         return new TableName(first.start(), stop, qualifier, name.text(), null != alias ? alias.text() : null);
     }
@@ -420,21 +457,25 @@ public final class SelectParser {
 
     // ---------- 工具 ----------
 
-    /** 别名：[AS] name（IDENT/包裹/非保留字）；有 AS 无名即语法错误。 */
-    private Token parseAlias() {
-        boolean hasAs = false;
+    /**
+     * 别名：[AS] name（IDENT/包裹/非保留字）；有 AS 无名即语法错误。
+     * allowAs=false（Oracle 表位）时 AS 引导即语法错误——Oracle 拒绝 {@code FROM t AS a}，
+     * 列位各方言皆允许 AS。
+     */
+    private Token parseAlias(final boolean allowAs) {
         if (buffer.peek(0).isKw(Kw.AS)) {
-            hasAs = true;
+            if (!allowAs) {
+                throw new ParseException("AS 引导表别名（本方言不允许）: " + buffer.peek(0), buffer.peek(0).start());
+            }
             buffer.next();
-        }
-        final Token token = buffer.peek(0);
-        if (isNameToken(token)) {
+            final Token token = buffer.peek(0);
+            if (!isNameToken(token)) {
+                throw new ParseException("AS 后缺别名: " + token, token.start());
+            }
             return buffer.next();
         }
-        if (hasAs) {
-            throw new ParseException("AS 后缺别名: " + token, token.start());
-        }
-        return null;
+        final Token token = buffer.peek(0);
+        return isNameToken(token) ? buffer.next() : null;
     }
 
     private boolean isNameToken(final Token token) {

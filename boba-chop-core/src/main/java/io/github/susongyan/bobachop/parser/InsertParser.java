@@ -53,6 +53,11 @@ public final class InsertParser {
         if (buffer.peek(0).isKw(Kw.INTO)) {
             buffer.next();
         }
+        // Oracle 多表 INSERT（ALL/FIRST）：合法 Oracle 语法但契约为单表，前置归类
+        //（ALL/FIRST 在 MySQL 语法下 INSERT 后无合法形态，误触发仅影响异常类型不影响拒绝事实）
+        if (buffer.peek(0).isKw(Kw.ALL) || buffer.peek(0).isKw(Kw.FIRST)) {
+            throw unsupported("多表 INSERT（ALL/FIRST，契约为单表）", buffer.peek(0));
+        }
         final TableName table = parseTargetTable();
         List<String> columns = null;
         if (TokenType.LPAREN == buffer.peek(0).type()) {

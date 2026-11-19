@@ -28,4 +28,9 @@ final class MySqlDialect extends DialectProfile {
     public boolean fetchFirstPagination() {
         return false;
     }
+
+    @Override
+    public boolean tableAliasAs() {
+        return true;
+    }
 }

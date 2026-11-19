@@ -25,4 +25,4 @@
 - [x] T8 InsertParser/UpdateParser/DeleteParser（冻结 2026-11-19，DESIGN v2.0；语句级 Parser 分派器 + INSERT/UPDATE/DELETE 白名单 + corpus dml-v1 26 条 + 19 黄金用例）
 - [x] T9 bench 套件（冻结 2026-11-19，DESIGN v2.1；四场景 + 收敛口径 KPI 可测化，首轮实测达标）
 - [x] T10 PostgreSQL Profile + 构造（冻结 2026-11-19，DESIGN v2.2；方言数据化三件套 LexerConfig/KeywordTable/DialectProfile + PG 词法与分页族 + 白名单前置归类 + corpus pg/select-v1 33 条 + 21 黄金用例）
-- [ ] T11 Oracle Profile + 构造（进行中）
+- [ ] T11 Oracle Profile + 构造（已提交待评审：OracleDialect + Kw Oracle 段 47 词 + 标准分页族复用 + 伪列/层级/MERGE/多表 INSERT 前置归类 + joinStartAhead 别名消歧（修复 T10 连接词吞别名缺陷）+ corpus oracle/select-v1 38 条 + 20 黄金用例，146 测试全绿）

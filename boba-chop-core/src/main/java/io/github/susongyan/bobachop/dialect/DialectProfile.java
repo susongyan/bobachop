@@ -13,8 +13,9 @@ import io.github.susongyan.bobachop.lexer.LexerConfig;
  *
  * <p><b>分页形态开关</b>与 {@code ast.Limit} 语义槽位对应：MySQL 三形态
  * （{@code LIMIT n} / {@code LIMIT o, n} / {@code LIMIT n OFFSET o}）、PG
- * {@code LIMIT n [OFFSET m]} 与 SQL 标准 {@code OFFSET m FETCH FIRST n ROWS ONLY}。
- * Oracle（T11）届时追加 {@code ROWNUM} 开关。</p>
+ * {@code LIMIT n [OFFSET m]} 与 SQL 标准 {@code OFFSET m FETCH FIRST n ROWS ONLY}；
+ * Oracle 12c+ 采用标准 {@code OFFSET m ROWS FETCH FIRST n ROWS ONLY}（复用同一开关），
+ * {@code ROWNUM} 分页为白名单外（表达式位前置归类）。</p>
  */
 public abstract class DialectProfile {
 
@@ -23,6 +24,9 @@ public abstract class DialectProfile {
 
     /** PostgreSQL profile（单例，无状态；关键字清单以 PG 附录 C 为准，对拍校准）。 */
     public static final DialectProfile POSTGRESQL = new PostgreSqlDialect();
+
+    /** Oracle profile（单例，无状态；关键字清单以 Oracle 保留字表为准，对拍校准）。 */
+    public static final DialectProfile ORACLE = new OracleDialect();
 
     /** 方言名（诊断与报告）。 */
     public abstract String name();
@@ -38,6 +42,12 @@ public abstract class DialectProfile {
     /** 是否支持 {@code LIMIT o, n} 逗号形态（MySQL 专有；PG 为语法错误）。 */
     public abstract boolean limitCommaOffset();
 
-    /** 是否支持 SQL 标准分页族 {@code OFFSET m FETCH FIRST n ROWS ONLY}（含 OFFSET 的 ROW/ROWS 后缀；PG）。 */
+    /** 是否支持 SQL 标准分页族 {@code OFFSET m FETCH FIRST n ROWS ONLY}（含 OFFSET 的 ROW/ROWS 后缀；PG、Oracle 12c+）。 */
     public abstract boolean fetchFirstPagination();
+
+    /**
+     * 表因子（含派生表）别名是否允许 {@code AS} 引导（MySQL/PG 允许；Oracle 拒绝
+     * {@code FROM t AS a}，列别名两方言皆允许 {@code AS}——列位恒开）。
+     */
+    public abstract boolean tableAliasAs();
 }
