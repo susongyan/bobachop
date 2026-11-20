@@ -54,6 +54,8 @@
 
 **ParseException**：限定函数调用 `db.f(x)`（v1 不收，落语法错误路径）
 
+**深度护栏**（F3 规格条目，DESIGN 版本记录见冻结条）：**同时**嵌套深度 ≤ 256——括号/一元/NOT/CASE/函数实参/IN 清单/BETWEEN 实参（表达式递归）与子查询/派生表/insert-select 源（查询递归）合计计量（两类递归同栈；上限按最坏每级帧成本 × 最小可部署栈预算推导）；超出以 ParseException 拒绝。只限栈递归：迭代路径（长 AND/OR 链、长 IN 清单）不受限，合法产出深树（递归消费者的深树预算为台账观察项）。
+
 ## 3. SELECT 白名单
 
 - 投影：`expr [AS] alias`，列位 `AS` 三方言恒允许；别名 = 未包裹标识符 / 包裹标识符 / 方言非保留字
@@ -71,6 +73,8 @@
 | Oracle | `OFFSET m ROWS FETCH {FIRST\|NEXT} n ROW[S] ONLY`（复用标准族） |
 
   白名单外：裸 OFFSET（无 LIMIT/FETCH）、`LIMIT ALL`、FETCH 省略计数（隐含 1）、LIMIT 与 FETCH 并用；`LIMIT o, n` 在 PG/Oracle = ParseException（方言自身语法错误）；LIMIT 在 Oracle 非方言词 → ParseException
+
+  **形态入契约**（F3 契约演进）：offset/rowCount 的文本序随书写形态翻转（逗号形态/标准族 offset 在前，LIMIT 形态 rowCount 在前），参数标记访问序随之翻转——`ast.Limit` 追加可空字段 `form ∈ {LIMIT, COMMA, FETCH}` 记录原书写形态，渲染器按原形态还原（未声明 → 方言默认形态）；规范化改写会静默对调绑定值（BobaPour 数据损坏级），F3 变异模糊暴露。
 
 - UNION 链：`UNION` / `UNION ALL`；未括号化操作数禁带 ORDER BY/LIMIT（MySQL 1221 域，违约 → Unsupported）；复合级尾部 ORDER BY/LIMIT/OFFSET/FETCH → Unsupported
 - 语句尾前置归类（Unsupported）：`FOR`（FOR UPDATE 等）/ `LOCK`（LOCK IN SHARE MODE）/ `WINDOW` / `NATURAL` / `INTO` / `PROCEDURE` / `EXCEPT` / `INTERSECT`（MySQL 8.0.31+ 与 PG 同拒）/ `MINUS` / `START` / `CONNECT`（后三者仅 Oracle 词）

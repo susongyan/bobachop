@@ -200,18 +200,19 @@ public final class AstGenerator {
 
     /**
      * 分页实参窄口=数字字面量或 ?；生成序严格跟随渲染序（参数访问序=文本序的断言前提）：
-     * 标准族先 offset 后 rowCount，LIMIT 族先 rowCount 后 offset。
+     * 标准族先 offset 后 rowCount，LIMIT 族先 rowCount 后 offset。形态显式入契约
+     * （F3），与渲染序一一对应；逗号形态为 MySQL 输入空间，生成器只产规范形态。
      */
     private Limit limit() {
         final boolean hasOffset = random.nextBoolean();
         if (profile.fetchFirstPagination() && !profile.limitCommaOffset()) {
             final Expr offset = hasOffset ? pageArg() : null;
             final Expr rowCount = pageArg();
-            return new Limit(0, 0, offset, rowCount);
+            return new Limit(0, 0, offset, rowCount, Limit.Form.FETCH);
         }
         final Expr rowCount = pageArg();
         final Expr offset = hasOffset ? pageArg() : null;
-        return new Limit(0, 0, offset, rowCount);
+        return new Limit(0, 0, offset, rowCount, Limit.Form.LIMIT);
     }
 
     private Expr pageArg() {

@@ -146,10 +146,11 @@ public final class AstRenderer {
                 }
                 renderExpr(select.groupBy().get(i), out);
             }
-            if (null != select.having()) {
-                out.append(" HAVING ");
-                renderExpr(select.having(), out);
-            }
+        }
+        if (null != select.having()) {
+            // HAVING 与 GROUP BY 契约上独立（隐式分组的裸 HAVING 三方言解析器皆接受，F3 变异体暴露）
+            out.append(" HAVING ");
+            renderExpr(select.having(), out);
         }
         if (null != select.orderBy()) {
             out.append(" ORDER BY ");
@@ -169,9 +170,15 @@ public final class AstRenderer {
         }
     }
 
-    /** 分页规范形态：Oracle=标准族（OFFSET 可省）；MySQL/PG=LIMIT n [OFFSET m]（rowCount 契约必填）。 */
+    /**
+     * 分页按<b>原书写形态</b>还原（F3：形态入契约）——offset/rowCount 的文本序随形态
+     * 翻转，参数访问序随之翻转，规范化为方言默认形态会静默对调绑定值。形态未声明
+     * （null，手工构造）→ 方言默认：标准族 OFFSET/FETCH，其余 LIMIT n [OFFSET m]。
+     */
     private void renderLimit(final Limit limit, final StringBuilder out) {
-        if (fetchForm()) {
+        final Limit.Form form = null != limit.form() ? limit.form()
+                : fetchForm() ? Limit.Form.FETCH : Limit.Form.LIMIT;
+        if (Limit.Form.FETCH == form) {
             if (null != limit.offset()) {
                 out.append(" OFFSET ");
                 renderExpr(limit.offset(), out);
@@ -180,6 +187,11 @@ public final class AstRenderer {
             out.append(" FETCH FIRST ");
             renderExpr(limit.rowCount(), out);
             out.append(" ROWS ONLY");
+        } else if (Limit.Form.COMMA == form) {
+            out.append(" LIMIT ");
+            renderExpr(limit.offset(), out);
+            out.append(", ");
+            renderExpr(limit.rowCount(), out);
         } else {
             out.append(" LIMIT ");
             renderExpr(limit.rowCount(), out);
@@ -520,7 +532,9 @@ public final class AstRenderer {
             return PREC_AND;
         }
         if ("=".equals(op) || "<=>".equals(op) || ">=".equals(op) || ">".equals(op) || "<=".equals(op)
-                || "<".equals(op) || "<>".equals(op) || "!=".equals(op) || "->".equals(op) || "->>".equals(op)) {
+                || "<".equals(op) || "<>".equals(op) || "!=".equals(op) || "->".equals(op) || "->>".equals(op)
+                // REGEXP/RLIKE 与比较同级（§2 表；F3 变异体暴露渲染器漏收，解析器已按 PREC_CMP 收录）
+                || "REGEXP".equals(op) || "RLIKE".equals(op)) {
             return PREC_CMP;
         }
         if ("|".equals(op)) {

@@ -86,6 +86,7 @@ public final class ExprParser {
     private final TokenBuffer buffer;
     private final SubqueryBridge subqueries;
     private final DialectProfile profile;
+    private final DepthGuard nesting;
 
     /** 参数下标按访问序分配（白名单构造内访问序 = 文本序）。 */
     private int paramCounter;
@@ -99,9 +100,16 @@ public final class ExprParser {
     }
 
     public ExprParser(final TokenBuffer buffer, final SubqueryBridge subqueries, final DialectProfile profile) {
+        this(buffer, subqueries, profile, new DepthGuard());
+    }
+
+    /** Parser 装配位：与 SelectParser 共享同一深度预算（两类递归同栈，F3 护栏）。 */
+    ExprParser(final TokenBuffer buffer, final SubqueryBridge subqueries, final DialectProfile profile,
+               final DepthGuard nesting) {
         this.buffer = buffer;
         this.subqueries = subqueries;
         this.profile = profile;
+        this.nesting = nesting;
     }
 
     /** 已分配的参数标记个数（0 起计，下标上限 = 此值）。 */
@@ -145,14 +153,19 @@ public final class ExprParser {
     }
 
     private Expr parseExpr(final int minPrec) {
-        Expr left = parsePrimary();
-        while (true) {
-            final Token at = buffer.peek(0);
-            final Integer prec = infixBindingPower(at);
-            if (null == prec || prec < minPrec) {
-                return left;
+        nesting.enter(buffer.peek(0));
+        try {
+            Expr left = parsePrimary();
+            while (true) {
+                final Token at = buffer.peek(0);
+                final Integer prec = infixBindingPower(at);
+                if (null == prec || prec < minPrec) {
+                    return left;
+                }
+                left = parseInfix(left, at, prec);
             }
-            left = parseInfix(left, at, prec);
+        } finally {
+            nesting.exit();
         }
     }
 

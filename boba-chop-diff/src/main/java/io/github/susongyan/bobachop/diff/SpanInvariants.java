@@ -34,7 +34,9 @@ import io.github.susongyan.bobachop.lexer.TokenType;
  *       Limit 的 offset/rowCount 源序随方言形态翻转，见 SpanWalker）；</li>
  *   <li><b>R5 根对齐</b>：语句根 span = [首个 token 起点, 末个非分号 token 终点]；</li>
  *   <li><b>R6 叶子原文</b>：Literal/Star/ParameterMarker/ColumnRef/FunctionCall 的
- *       span 切片与节点存文一致（契约"只存原文"的可执行化）。</li>
+ *       span 切片与节点存文一致（契约"只存原文"的可执行化）；限定名（ColumnRef/Star
+ *       的 qualifier 链）段间允许空白——{@code o . id} 为合法 SQL，带点形态去空白比较
+ *       （F3 变异体暴露的公式校准，无点形态仍精确相等）。</li>
  * </ul>
  *
  * <p>返回违规清单（空 = 全过）。每条违规携带规则号 + 节点类型 + span + 现场片段，
@@ -109,20 +111,33 @@ public final class SpanInvariants {
         final String slice = sql.substring(start, stop + 1);
         if (node instanceof Literal && !slice.equals(((Literal) node).text())) {
             out.add("R6", node, start, stop, "Literal 存文与切片不符: '" + ((Literal) node).text() + "'");
-        } else if (node instanceof Star && !slice.equals(null == ((Star) node).qualifier() ? "*"
-                : ((Star) node).qualifier() + ".*")) {
-            out.add("R6", node, start, stop, "Star 切片异常: '" + slice + "'");
+        } else if (node instanceof Star) {
+            final Star star = (Star) node;
+            // 与 ColumnRef 同理：限定名段间空白合法且存文按原文拼接（含空白），两侧去空白比较
+            final String expected = null == star.qualifier() ? "*" : star.qualifier() + ".*";
+            if (!dottedSlice(slice).equals(dottedSlice(expected))) {
+                out.add("R6", node, start, stop, "Star 切片异常: '" + slice + "'");
+            }
         } else if (node instanceof ParameterMarker && !"?".equals(slice)) {
             out.add("R6", node, start, stop, "参数标记切片异常: '" + slice + "'");
         } else if (node instanceof ColumnRef) {
             final ColumnRef ref = (ColumnRef) node;
             final String expected = null == ref.qualifier() ? ref.name() : ref.qualifier() + "." + ref.name();
-            if (!slice.equals(expected)) {
+            // 限定名段间允许空白（o . id 合法 SQL，且解析器按原文拼 qualifier——存文同样带空白）：
+            // 带点形态两侧去空白比较（F3 变异体暴露的公式校准），无点形态仍精确相等
+            final boolean mismatch = slice.contains(".")
+                    ? !dottedSlice(slice).equals(dottedSlice(expected)) : !slice.equals(expected);
+            if (mismatch) {
                 out.add("R6", node, start, stop, "ColumnRef 切片 '" + slice + "' ≠ 存文 '" + expected + "'");
             }
         } else if (node instanceof FunctionCall && ')' != sql.charAt(stop)) {
             out.add("R6", node, start, stop, "FunctionCall 终点非 ')': '" + sql.charAt(stop) + "'");
         }
+    }
+
+    /** 限定名切片去空白（段间空白合法，如 {@code o . id}；标识符内部不可能有空白）。 */
+    private static String dottedSlice(final String slice) {
+        return slice.replaceAll("\\s+", "");
     }
 
     private static Integer indexOfStart(final List<Token> tokens, final int offset) {

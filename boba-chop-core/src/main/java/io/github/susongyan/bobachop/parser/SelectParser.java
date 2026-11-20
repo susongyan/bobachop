@@ -49,12 +49,15 @@ public final class SelectParser {
     private final TokenBuffer buffer;
     private final ExprParser exprs;
     private final DialectProfile profile;
+    private final DepthGuard nesting;
 
-    /** 共享 buffer/exprs/profile 由语句级 {@link Parser} 装配（子查询桥接与 insert-select 复用本类）。 */
-    SelectParser(final TokenBuffer buffer, final ExprParser exprs, final DialectProfile profile) {
+    /** 共享 buffer/exprs/profile/nesting 由语句级 {@link Parser} 装配（子查询桥接与 insert-select 复用本类）。 */
+    SelectParser(final TokenBuffer buffer, final ExprParser exprs, final DialectProfile profile,
+                 final DepthGuard nesting) {
         this.buffer = buffer;
         this.exprs = exprs;
         this.profile = profile;
+        this.nesting = nesting;
     }
 
     /** 语句级 SELECT 入口（Parser 分派后到达）：查询体 + 白名单外尾部构造检查。 */
@@ -74,6 +77,15 @@ public final class SelectParser {
 
     /** 查询体：单 SELECT 或 UNION [ALL] 链（左结合按位置对应 operators）；亦为子查询桥与 insert-select 的目标。 */
     SelectQuery parseQueryBody() {
+        nesting.enter(buffer.peek(0));
+        try {
+            return queryBody();
+        } finally {
+            nesting.exit();
+        }
+    }
+
+    private SelectQuery queryBody() {
         final SelectStatement first = parseSimpleSelect(false);
         if (!buffer.peek(0).isKw(Kw.UNION)) {
             return first;
@@ -392,7 +404,8 @@ public final class SelectParser {
             }
             buffer.next();
             final Expr second = parseLimitArg();
-            return new Limit(limitToken.start(), second.stop(), first, second);
+            // 逗号形态：文本序 offset 在前——形态入契约，渲染按原形态还原（参数序不翻转）
+            return new Limit(limitToken.start(), second.stop(), first, second, Limit.Form.COMMA);
         }
         if (buffer.peek(0).isKw(Kw.OFFSET)) {
             buffer.next();
@@ -403,12 +416,12 @@ public final class SelectParser {
                     throw unsupported("LIMIT 与 FETCH 并用", buffer.peek(0));
                 }
             }
-            return new Limit(limitToken.start(), lastStop(), offset, first);
+            return new Limit(limitToken.start(), lastStop(), offset, first, Limit.Form.LIMIT);
         }
         if (profile.fetchFirstPagination() && buffer.peek(0).isKw(Kw.FETCH)) {
             throw unsupported("LIMIT 与 FETCH 并用", buffer.peek(0));
         }
-        return new Limit(limitToken.start(), first.stop(), null, first);
+        return new Limit(limitToken.start(), first.stop(), null, first, Limit.Form.LIMIT);
     }
 
     /** PG 标准分页：{@code [OFFSET m [ROW|ROWS]] FETCH {FIRST|NEXT} n [ROW|ROWS] ONLY}。 */
@@ -442,7 +455,7 @@ public final class SelectParser {
             throw new ParseException("期望 FETCH ... ONLY 但为 " + only, only.start());
         }
         buffer.next();
-        return new Limit(start.start(), lastStop(), offset, count);
+        return new Limit(start.start(), lastStop(), offset, count, Limit.Form.FETCH);
     }
 
     /** OFFSET 计数后的可选 ROW/ROWS 后缀（PG 语法糖，无 AST 锚点差异）。 */

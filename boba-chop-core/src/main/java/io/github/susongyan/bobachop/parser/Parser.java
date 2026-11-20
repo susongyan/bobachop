@@ -36,14 +36,16 @@ public final class Parser {
 
     public Parser(final String sql, final DialectProfile profile) {
         this.buffer = new TokenBuffer(sql, profile.lexerConfig());
+        // 深度护栏共享实例：表达式递归与查询递归同一份栈预算（F3，parser.DepthGuard）
+        final DepthGuard nesting = new DepthGuard();
         // bridge 在构造期只被捕获不被调用，字段延迟可达成立
         exprs = new ExprParser(buffer, new ExprParser.SubqueryBridge() {
             @Override
             public SelectQuery parseSelectQuery() {
                 return selects.parseQueryBody();
             }
-        }, profile);
-        selects = new SelectParser(buffer, exprs, profile);
+        }, profile, nesting);
+        selects = new SelectParser(buffer, exprs, profile, nesting);
         inserts = new InsertParser(buffer, exprs, selects, profile);
         updates = new UpdateParser(buffer, exprs, profile);
         deletes = new DeleteParser(buffer, exprs, profile);
