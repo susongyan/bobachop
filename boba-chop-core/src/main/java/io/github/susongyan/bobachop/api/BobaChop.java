@@ -23,10 +23,10 @@ import io.github.susongyan.bobachop.parser.Parser;
  *   ON/USING）、派生表、WHERE/GROUP BY/HAVING/ORDER BY、分页（MySQL LIMIT 三形态；PG
  *   LIMIT/OFFSET 与 FETCH FIRST n ROWS ONLY 族）、UNION [ALL]、表达式子查询</li>
  *   <li>INSERT——[INTO]（列清单）/VALUES 多行/insert-SELECT（含 UNION 源）/ON DUPLICATE KEY UPDATE
- *   （含 MySQL 专有 VALUES(col)）</li>
- *   <li>UPDATE 单表（别名/SET 赋值/WHERE）、DELETE 单表（别名/WHERE）</li>
+ *   （含 MySQL 专有 VALUES(col)）/RETURNING（PG 方言锚点，投影项同形）</li>
+ *   <li>UPDATE 单表（别名/SET 赋值/WHERE/RETURNING(PG)）、DELETE 单表（别名/WHERE/RETURNING(PG)）</li>
  *   <li>PG 词法——ANSI 双引号标识符、E''/B''/X'' 字符串、嵌套块注释、-- 恒注释；
- *   PG 白名单外——RETURNING/ON CONFLICT/FULL JOIN/LATERAL/ILIKE（显式归类或语法拒绝）</li>
+ *   PG 白名单外——ON CONFLICT/FULL JOIN/LATERAL/ILIKE（显式归类或语法拒绝）</li>
  * </ul>
  */
 public final class BobaChop {

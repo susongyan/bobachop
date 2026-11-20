@@ -6,6 +6,7 @@ import java.util.List;
 import io.github.susongyan.bobachop.ast.Assignment;
 import io.github.susongyan.bobachop.ast.ColumnRef;
 import io.github.susongyan.bobachop.ast.Expr;
+import io.github.susongyan.bobachop.ast.SelectItem;
 import io.github.susongyan.bobachop.ast.Statement;
 import io.github.susongyan.bobachop.ast.TableName;
 import io.github.susongyan.bobachop.ast.UpdateStatement;
@@ -18,7 +19,8 @@ import io.github.susongyan.bobachop.lexer.TokenBuffer;
 import io.github.susongyan.bobachop.lexer.TokenType;
 
 /**
- * UPDATE 语句语法器（v1 MySQL 白名单）：{@code UPDATE t [AS] alias SET col = expr, ... [WHERE ...]}。
+ * UPDATE 语句语法器（v1 白名单）：{@code UPDATE t [AS] alias SET col = expr, ... [WHERE ...]
+ * [RETURNING 清单]}。RETURNING 为 PG 方言锚点（dmlReturning 门禁，投影项同形）。
  *
  * <p><b>v1 白名单外</b>：多表 UPDATE（{@code UPDATE t1, t2 / UPDATE t1 JOIN t2 SET}，
  * 契约 UpdateStatement 为单表）、尾部 ORDER BY/LIMIT（MySQL 允许、契约无锚点，追加可空字段演进）、
@@ -28,11 +30,14 @@ public final class UpdateParser {
 
     private final TokenBuffer buffer;
     private final ExprParser exprs;
+    private final SelectParser selects;
     private final DialectProfile profile;
 
-    UpdateParser(final TokenBuffer buffer, final ExprParser exprs, final DialectProfile profile) {
+    UpdateParser(final TokenBuffer buffer, final ExprParser exprs, final SelectParser selects,
+            final DialectProfile profile) {
         this.buffer = buffer;
         this.exprs = exprs;
+        this.selects = selects;
         this.profile = profile;
     }
 
@@ -60,7 +65,16 @@ public final class UpdateParser {
         if (buffer.peek(0).isKw(Kw.ORDER) || buffer.peek(0).isKw(Kw.LIMIT)) {
             throw unsupported("UPDATE 尾部 ORDER BY/LIMIT（契约无锚点）", buffer.peek(0));
         }
-        return new UpdateStatement(update.start(), lastStop(), table, assignments, where);
+        final List<SelectItem> returning = parseReturningIfPresent();
+        return new UpdateStatement(update.start(), lastStop(), table, assignments, where, returning);
+    }
+
+    /** PG 方言锚点：RETURNING 清单（其余方言该词不存在，恒 null）。 */
+    private List<SelectItem> parseReturningIfPresent() {
+        if (profile.dmlReturning() && buffer.peek(0).isKw(Kw.RETURNING)) {
+            return selects.parseReturning();
+        }
+        return null;
     }
 
     private Assignment parseAssignment() {

@@ -47,8 +47,8 @@ public final class Parser {
         }, profile, nesting);
         selects = new SelectParser(buffer, exprs, profile, nesting);
         inserts = new InsertParser(buffer, exprs, selects, profile);
-        updates = new UpdateParser(buffer, exprs, profile);
-        deletes = new DeleteParser(buffer, exprs, profile);
+        updates = new UpdateParser(buffer, exprs, selects, profile);
+        deletes = new DeleteParser(buffer, exprs, selects, profile);
     }
 
     /** 顶层入口：DML 分派 + 可选尾分号 + 强制 EOF（多语句/尾部残 token 为语法错误）。 */
@@ -71,10 +71,8 @@ public final class Parser {
         } else {
             throw new ParseException("期望 DML 语句但为 " + first, first.start());
         }
-        // PG：DML 尾部 RETURNING 为合法语法但契约无锚点，前置归类白名单外（MySQL 无此词，恒不触发）
-        if (buffer.peek(0).isKw(Kw.RETURNING)) {
-            throw new UnsupportedSyntaxException("白名单外: RETURNING 子句（契约待演进）@" + buffer.peek(0).start());
-        }
+        // RETURNING 已由各 DML 子语法器按 dmlReturning 门禁消费（PG 方言锚点，契约 v1.1）；
+        // SELECT 语句尾出现 RETURNING 不合法，落"语句后多余 token" ParseException 自然拒绝
         if (TokenType.SEMICOLON == buffer.peek(0).type()) {
             buffer.next();
         }

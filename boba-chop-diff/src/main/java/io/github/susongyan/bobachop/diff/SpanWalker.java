@@ -70,15 +70,18 @@ public final class SpanWalker {
             add(out, i.table());
             add(out, i.source());
             addAll(out, i.onDuplicateKey());
+            addAll(out, i.returning());
         } else if (node instanceof UpdateStatement) {
             final UpdateStatement u = (UpdateStatement) node;
             add(out, u.table());
             addAll(out, u.assignments());
             add(out, u.where());
+            addAll(out, u.returning());
         } else if (node instanceof DeleteStatement) {
             final DeleteStatement d = (DeleteStatement) node;
             add(out, d.table());
             add(out, d.where());
+            addAll(out, d.returning());
         } else if (node instanceof TableName) {
             // 叶子：qualifier/name/alias 为字符串字段
         } else if (node instanceof DerivedTable) {

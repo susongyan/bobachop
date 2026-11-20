@@ -124,11 +124,7 @@ public final class AstRenderer {
             if (i > 0) {
                 out.append(", ");
             }
-            final SelectItem item = select.items().get(i);
-            renderExpr(item.expr(), out);
-            if (null != item.alias()) {
-                out.append(" AS ").append(item.alias());
-            }
+            renderItem(select.items().get(i), out);
         }
         if (null != select.from()) {
             out.append(" FROM ");
@@ -309,6 +305,29 @@ public final class AstRenderer {
             out.append(" ON DUPLICATE KEY UPDATE ");
             renderAssignments(insert.onDuplicateKey(), out);
         }
+        renderReturning(insert.returning(), out);
+    }
+
+    /** 投影项：expr [AS alias]（SELECT 与 RETURNING 清单共用；别名恒以 AS 引导的规范形态）。 */
+    private void renderItem(final SelectItem item, final StringBuilder out) {
+        renderExpr(item.expr(), out);
+        if (null != item.alias()) {
+            out.append(" AS ").append(item.alias());
+        }
+    }
+
+    /** RETURNING 清单（PG 方言锚点），未出现不渲染。 */
+    private void renderReturning(final java.util.List<SelectItem> returning, final StringBuilder out) {
+        if (null == returning) {
+            return;
+        }
+        out.append(" RETURNING ");
+        for (int i = 0; i < returning.size(); i++) {
+            if (i > 0) {
+                out.append(", ");
+            }
+            renderItem(returning.get(i), out);
+        }
     }
 
     private void renderTableNameNoAlias(final TableName table, final StringBuilder out) {
@@ -341,6 +360,7 @@ public final class AstRenderer {
             out.append(" WHERE ");
             renderExpr(update.where(), out);
         }
+        renderReturning(update.returning(), out);
     }
 
     private void renderDelete(final DeleteStatement delete, final StringBuilder out) {
@@ -350,6 +370,7 @@ public final class AstRenderer {
             out.append(" WHERE ");
             renderExpr(delete.where(), out);
         }
+        renderReturning(delete.returning(), out);
     }
 
     // ---------- 表达式 ----------

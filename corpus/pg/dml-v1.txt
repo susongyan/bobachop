@@ -1,0 +1,23 @@
+-- BobaChop corpus: PostgreSQL INSERT/UPDATE/DELETE v1 白名单形态（每行一条；空行与本形态注释行跳过）
+-- RETURNING 方言锚点（投影项同形：expr [AS] alias / * / t.*）
+INSERT INTO t_order (id, user_id, amount) VALUES (1, 1001, 9.90)
+INSERT INTO t_order (id, user_id, amount) VALUES (2, 1002, 19.90), (3, 1003, 29.90)
+INSERT INTO t_order (id, amount) VALUES (?, ?)
+INSERT INTO t_order (id, amount) VALUES (?, ?) RETURNING id
+INSERT INTO t_order (id, remark) VALUES (4, E'转义\'串') RETURNING id, created_at
+INSERT INTO t_order VALUES (5, 1005, 49.90) RETURNING *
+INSERT INTO public.t_order (id) VALUES (6) RETURNING t_order.*
+INSERT INTO t_order (id, amount) VALUES (7, 1.5) RETURNING id AS order_id, amount * 2 AS double_amount
+INSERT INTO t_order (id, amount) VALUES (8, 2.5) RETURNING id order_id, amount
+INSERT INTO t_audit (actor, at_time) VALUES ('job', NOW()) RETURNING id
+INSERT INTO t_bak (id) SELECT id FROM t_order WHERE status = 'PAID' RETURNING id
+INSERT INTO t_top (id) SELECT id FROM t_order ORDER BY amount DESC LIMIT 10 RETURNING id
+UPDATE t_order SET status = 'DONE'
+UPDATE t_order SET status = 'DONE', retry = retry + 1 WHERE id = 10
+UPDATE t_order o SET o.status = 'CANCEL' WHERE o.user_id = ? RETURNING o.id
+UPDATE t_order AS o SET amount = amount * 0.9 WHERE o.id > ? RETURNING id, amount AS new_amount
+UPDATE t_config SET v = ? WHERE k = 'switch' RETURNING v
+DELETE FROM t_order
+DELETE FROM t_order WHERE id = 11
+DELETE FROM t_order WHERE user_id = ? AND status = 'INIT' RETURNING id
+DELETE FROM t_order AS o WHERE o.created_at < '2026-01-01' RETURNING o.id, o.status

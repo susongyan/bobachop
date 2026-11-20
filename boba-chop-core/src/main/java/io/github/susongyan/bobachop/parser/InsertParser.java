@@ -9,6 +9,7 @@ import io.github.susongyan.bobachop.ast.Expr;
 import io.github.susongyan.bobachop.ast.FunctionCall;
 import io.github.susongyan.bobachop.ast.InsertSource;
 import io.github.susongyan.bobachop.ast.InsertStatement;
+import io.github.susongyan.bobachop.ast.SelectItem;
 import io.github.susongyan.bobachop.ast.SelectQuery;
 import io.github.susongyan.bobachop.ast.SelectSource;
 import io.github.susongyan.bobachop.ast.Statement;
@@ -98,7 +99,14 @@ public final class InsertParser {
                 break;
             }
         }
-        return new InsertStatement(insert.start(), lastStop(), table, columns, source, onDuplicateKey);
+        // PG 方言锚点：RETURNING 清单（其余方言该词不存在，恒 null）
+        final List<SelectItem> returning;
+        if (profile.dmlReturning() && buffer.peek(0).isKw(Kw.RETURNING)) {
+            returning = selects.parseReturning();
+        } else {
+            returning = null;
+        }
+        return new InsertStatement(insert.start(), lastStop(), table, columns, source, onDuplicateKey, returning);
     }
 
     // ---------- 数据源 ----------

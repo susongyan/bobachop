@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import io.github.susongyan.bobachop.api.BobaChop;
 import io.github.susongyan.bobachop.ast.BinaryExpr;
 import io.github.susongyan.bobachop.ast.ColumnRef;
+import io.github.susongyan.bobachop.ast.DeleteStatement;
 import io.github.susongyan.bobachop.ast.InsertStatement;
 import io.github.susongyan.bobachop.ast.Join;
 import io.github.susongyan.bobachop.ast.JoinType;
@@ -19,8 +20,10 @@ import io.github.susongyan.bobachop.ast.Limit;
 import io.github.susongyan.bobachop.ast.Literal;
 import io.github.susongyan.bobachop.ast.ParameterMarker;
 import io.github.susongyan.bobachop.ast.SelectStatement;
+import io.github.susongyan.bobachop.ast.Star;
 import io.github.susongyan.bobachop.ast.Statement;
 import io.github.susongyan.bobachop.ast.TableName;
+import io.github.susongyan.bobachop.ast.UpdateStatement;
 import io.github.susongyan.bobachop.ast.ValuesSource;
 import io.github.susongyan.bobachop.dialect.DialectProfile;
 import io.github.susongyan.bobachop.exception.ParseException;
@@ -134,8 +137,7 @@ final class PgParserTest {
     void pg专有语法前置归类() {
         assertThrows(UnsupportedSyntaxException.class, () -> pg("SELECT * FROM t1 FULL JOIN t2 ON t1.id = t2.id"));
         assertThrows(UnsupportedSyntaxException.class, () -> pg("SELECT * FROM t1, LATERAL (SELECT 1) x"));
-        assertThrows(UnsupportedSyntaxException.class, () -> pg("INSERT INTO t (id) VALUES (1) RETURNING id"));
-        assertThrows(UnsupportedSyntaxException.class, () -> pg("UPDATE t SET id = 1 RETURNING *"));
+        // RETURNING 已入白名单（契约演进，另见 returning三DML语句_投影项同形）——不再前置归类
         assertThrows(UnsupportedSyntaxException.class,
                 () -> pg("INSERT INTO t (id) VALUES (1) ON CONFLICT (id) DO NOTHING"));
         // FULL/RETURNING 非 MySQL 关键字：默认入口不受影响（回归锚）
@@ -161,6 +163,52 @@ final class PgParserTest {
         // JOIN/LEFT/VALUES/ROW 在 PG 为非保留字：可作未包裹标识符
         assertEquals("row", ((TableName) ((SelectStatement) pg("SELECT * FROM row")).from()).name());
         assertEquals(1, ((SelectStatement) pg("SELECT next FROM t")).items().size());
+    }
+
+    @Test
+    void returning三DML语句_投影项同形() {
+        // INSERT/UPDATE/DELETE 尾部 RETURNING：清单与 SELECT 投影项同形（expr [AS] alias / *）
+        final InsertStatement insert = (InsertStatement) pg(
+                "INSERT INTO t_order (id, amount) VALUES (?, ?) RETURNING id, amount * 2 AS double_amount");
+        assertEquals(2, insert.returning().size());
+        assertEquals("id", ((ColumnRef) insert.returning().get(0).expr()).name());
+        assertEquals("double_amount", insert.returning().get(1).alias());
+        assertNull(insert.returning().get(0).alias());
+        final UpdateStatement update =
+                (UpdateStatement) pg(
+                        "UPDATE t_order SET status = 'DONE' WHERE id = ? RETURNING id, status");
+        assertEquals(2, update.returning().size());
+        final DeleteStatement delete =
+                (DeleteStatement) pg(
+                        "DELETE FROM t_order WHERE id = ? RETURNING id");
+        assertEquals(1, delete.returning().size());
+        // 基线：不带 RETURNING 恒 null
+        assertNull(((InsertStatement) pg("INSERT INTO t (id) VALUES (1)")).returning());
+    }
+
+    @Test
+    void returning星号与裸别名形态() {
+        final InsertStatement star = (InsertStatement) pg("INSERT INTO t (id) VALUES (1) RETURNING *");
+        assertInstanceOf(Star.class, star.returning().get(0).expr());
+        final InsertStatement qualified = (InsertStatement) pg("INSERT INTO t (id) VALUES (1) RETURNING t.*");
+        assertEquals("t", ((Star) qualified.returning().get(0).expr()).qualifier());
+        // 裸别名（无 AS 引导）与投影项一致
+        final InsertStatement bare = (InsertStatement) pg("INSERT INTO t (id) VALUES (1) RETURNING id order_id");
+        assertEquals("order_id", bare.returning().get(0).alias());
+        // 清单后残留 token 为语法错误
+        assertThrows(ParseException.class, () -> pg("INSERT INTO t (id) VALUES (1) RETURNING id , ,"));
+        assertThrows(ParseException.class, () -> pg("INSERT INTO t (id) VALUES (1) RETURNING"));
+    }
+
+    @Test
+    void returning方言门禁_MySQL为尾部多余token() {
+        // RETURNING 仅 PG 关键字表收录：MySQL 下为普通标识符，DML 尾出现即"语句后多余 token"
+        assertThrows(ParseException.class,
+                () -> BobaChop.parse("INSERT INTO t (id) VALUES (1) RETURNING id", DialectProfile.MYSQL));
+        assertThrows(ParseException.class,
+                () -> BobaChop.parse("UPDATE t SET a = 1 RETURNING a", DialectProfile.MYSQL));
+        // PG 下 SELECT 语句尾出现 RETURNING 同样非法（RETURNING 为 DML 专属子句）
+        assertThrows(ParseException.class, () -> pg("SELECT 1 RETURNING 1"));
     }
 
     @Test

@@ -59,4 +59,14 @@ public abstract class DialectProfile {
     public boolean multiTableInsert() {
         return false;
     }
+
+    /**
+     * DML 尾部是否支持 {@code RETURNING 清单}（PG 方言锚点；清单与 SELECT 投影项同形，
+     * 契约字段 {@code InsertStatement/UpdateStatement/DeleteStatement.returning}）。
+     * RETURNING 词仅 PG 关键字表收录——MySQL/Oracle 下为普通标识符，语句尾出现即
+     * "语句后多余 token" ParseException，方言自限。
+     */
+    public boolean dmlReturning() {
+        return false;
+    }
 }

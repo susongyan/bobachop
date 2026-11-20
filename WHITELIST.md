@@ -90,10 +90,12 @@
 
 **ParseException**：MySQL 修饰符（LOW_PRIORITY / DELAYED / HIGH_PRIORITY / IGNORE / REPLACE）/ `VALUES ROW()` 构造
 
+**RETURNING**（PG 方言锚点，`dmlReturning` 门禁；契约演进追加可空字段 `returning`）：INSERT/UPDATE/DELETE 尾部 `RETURNING 投影清单`——清单与 SELECT 投影项同形（`expr [AS] alias`、`*`、`t.*`）；渲染按清单序还原（别名规范为 AS 引导形态）。RETURNING 词仅 PG 关键字表收录：MySQL/Oracle 语句尾出现即"语句后多余 token" ParseException（方言自限，无显式门禁分支）；PG 的 SELECT 语句尾出现同此（RETURNING 为 DML 专属子句）。
+
 ## 5. UPDATE / DELETE 白名单
 
-- `UPDATE t [AS] a SET 列 = expr, ... [WHERE ...]`（单表；多表形态与尾部 ORDER BY/LIMIT → Unsupported；`:=` 赋值形态 → ParseException）
-- `DELETE FROM t [AS] a [WHERE ...]`（单表；多表/`USING` 形态与尾部 ORDER BY/LIMIT → Unsupported）
+- `UPDATE t [AS] a SET 列 = expr, ... [WHERE ...] [RETURNING 清单(PG)]`（单表；多表形态与尾部 ORDER BY/LIMIT → Unsupported；`:=` 赋值形态 → ParseException）
+- `DELETE FROM t [AS] a [WHERE ...] [RETURNING 清单(PG)]`（单表；多表/`USING` 形态与尾部 ORDER BY/LIMIT → Unsupported）
 - PG 语境 `SET` 位置键控：非保留字但恒为子句分隔词，不作裸别名
 
 ## 6. 方言开关矩阵（DialectProfile）
@@ -103,6 +105,8 @@
 | `limitCommaOffset`（LIMIT o, n） | ✓ | ✗ ParseException | ✗ ParseException |
 | `fetchFirstPagination`（OFFSET/FETCH 标准族） | ✗ | ✓ | ✓ |
 | `tableAliasAs`（表位/派生表位 AS 引导） | ✓ | ✓ | ✗ ParseException（列位 AS 恒允许） |
+| `multiTableInsert`（INSERT ALL/FIRST 前置归类） | ✗ | ✗ | ✓ |
+| `dmlReturning`（DML 尾部 RETURNING 清单） | ✗ ParseException | ✓ | ✗ ParseException |
 
 关键字表装配：MySQL = Kw 主段全集 − 方言追加段（PG/Oracle 专有词在 MySQL 为普通标识符）；PG / Oracle = 保留字集 ∪ 语法键控非保留字集。子句锚点词（PG 的 OFFSET/FETCH、Oracle 的 OFFSET/FETCH/USING）入保留集——表别名位必须让位给子句。
 
@@ -111,7 +115,6 @@
 | 构造 | 触发位置 | 方言 |
 |---|---|---|
 | CTE（WITH 子句） | 语句分派位 | 三方言 |
-| RETURNING 子句 | DML 尾部 | PG |
 | ON CONFLICT upsert | INSERT 的 ON 后 | PG |
 | FULL JOIN / FULL OUTER JOIN | 连接位 | PG / Oracle |
 | LATERAL 派生表 | 表因子位 | PG |

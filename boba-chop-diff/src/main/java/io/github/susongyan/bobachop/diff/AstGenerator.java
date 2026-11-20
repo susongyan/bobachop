@@ -291,7 +291,9 @@ public final class AstGenerator {
             }
         }
         final TableName table = new TableName(0, 0, null, tableName(), null);
-        return new InsertStatement(0, 0, table, columns, source, odku);
+        // 生成序=渲染序：RETURNING 为文本末段，最后生成、末位实参传入
+        final List<SelectItem> returning = returning();
+        return new InsertStatement(0, 0, table, columns, source, odku, returning);
     }
 
     private Statement updateStatement() {
@@ -302,13 +304,29 @@ public final class AstGenerator {
         }
         final TableName table = new TableName(0, 0, null, tableName(), random.nextInt(2) == 0 ? alias() : null);
         final Expr where = random.nextInt(10) < 7 ? expr(maxExprDepth) : null;
-        return new UpdateStatement(0, 0, table, assignments, where);
+        return new UpdateStatement(0, 0, table, assignments, where, returning());
     }
 
     private Statement deleteStatement() {
         final TableName table = new TableName(0, 0, null, tableName(), random.nextInt(2) == 0 ? alias() : null);
         final Expr where = random.nextInt(2) == 0 ? expr(maxExprDepth) : null;
-        return new DeleteStatement(0, 0, table, where);
+        return new DeleteStatement(0, 0, table, where, returning());
+    }
+
+    /**
+     * RETURNING 清单（PG 方言锚点）：约 1/3 语句携带；投影项同形（浅表达式 + 概率别名）。
+     * 参数访问序=文本序前提：与渲染器同以清单序生成。
+     */
+    private List<SelectItem> returning() {
+        if (!profile.dmlReturning() || random.nextInt(3) != 0) {
+            return null;
+        }
+        final int count = 1 + random.nextInt(3);
+        final List<SelectItem> items = new ArrayList<SelectItem>();
+        for (int i = 0; i < count; i++) {
+            items.add(new SelectItem(0, 0, expr(2), random.nextInt(3) == 0 ? alias() : null));
+        }
+        return items;
     }
 
     private Assignment assignment() {

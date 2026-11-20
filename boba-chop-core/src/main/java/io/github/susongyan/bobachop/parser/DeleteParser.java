@@ -5,6 +5,7 @@ import java.util.List;
 
 import io.github.susongyan.bobachop.ast.DeleteStatement;
 import io.github.susongyan.bobachop.ast.Expr;
+import io.github.susongyan.bobachop.ast.SelectItem;
 import io.github.susongyan.bobachop.ast.Statement;
 import io.github.susongyan.bobachop.ast.TableName;
 import io.github.susongyan.bobachop.dialect.DialectProfile;
@@ -16,21 +17,25 @@ import io.github.susongyan.bobachop.lexer.TokenBuffer;
 import io.github.susongyan.bobachop.lexer.TokenType;
 
 /**
- * DELETE 语句语法器（v1 MySQL 白名单）：{@code DELETE FROM t [AS] alias [WHERE ...]}。
+ * DELETE 语句语法器（v1 白名单）：{@code DELETE FROM t [AS] alias [WHERE ...] [RETURNING 清单]}。
  *
  * <p><b>v1 白名单外</b>：多表 DELETE（{@code DELETE t1, t2 FROM ... / DELETE FROM t1 USING ...}，
  * 契约 DeleteStatement 为单表）、尾部 ORDER BY/LIMIT（MySQL 允许、契约无锚点）、修饰符
- * LOW_PRIORITY/QUICK/IGNORE。</p>
+ * LOW_PRIORITY/QUICK/IGNORE。RETURNING 为 PG 方言锚点
+ * （{@link DialectProfile#dmlReturning()} 门禁，投影项同形）。</p>
  */
 public final class DeleteParser {
 
     private final TokenBuffer buffer;
     private final ExprParser exprs;
+    private final SelectParser selects;
     private final DialectProfile profile;
 
-    DeleteParser(final TokenBuffer buffer, final ExprParser exprs, final DialectProfile profile) {
+    DeleteParser(final TokenBuffer buffer, final ExprParser exprs, final SelectParser selects,
+            final DialectProfile profile) {
         this.buffer = buffer;
         this.exprs = exprs;
+        this.selects = selects;
         this.profile = profile;
     }
 
@@ -53,7 +58,16 @@ public final class DeleteParser {
         if (buffer.peek(0).isKw(Kw.ORDER) || buffer.peek(0).isKw(Kw.LIMIT)) {
             throw unsupported("DELETE 尾部 ORDER BY/LIMIT（契约无锚点）", buffer.peek(0));
         }
-        return new DeleteStatement(delete.start(), lastStop(), table, where);
+        final List<SelectItem> returning = parseReturningIfPresent();
+        return new DeleteStatement(delete.start(), lastStop(), table, where, returning);
+    }
+
+    /** PG 方言锚点：RETURNING 清单（其余方言该词不存在，恒 null）。 */
+    private List<SelectItem> parseReturningIfPresent() {
+        if (profile.dmlReturning() && buffer.peek(0).isKw(Kw.RETURNING)) {
+            return selects.parseReturning();
+        }
+        return null;
     }
 
     /** 只读判断：当前位置是否多表 JOIN 形态（不改游标，D2 只读前瞻）。 */

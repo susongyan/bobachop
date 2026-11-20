@@ -86,6 +86,11 @@ final class PostgreSqlDialect extends DialectProfile {
     }
 
     @Override
+    public boolean dmlReturning() {
+        return true;
+    }
+
+    @Override
     public boolean tableAliasAs() {
         return true;
     }

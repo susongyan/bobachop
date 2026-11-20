@@ -128,18 +128,7 @@ public final class SelectParser {
         } else if (buffer.peek(0).isKw(Kw.ALL)) {
             buffer.next();
         }
-        final List<SelectItem> items = new ArrayList<SelectItem>();
-        while (true) {
-            final Expr expr = exprs.parseExpr();
-            final Token alias = parseAlias(true);
-            items.add(new SelectItem(expr.start(), null != alias ? alias.stop() : expr.stop(), expr,
-                    null != alias ? alias.text() : null));
-            if (TokenType.COMMA == buffer.peek(0).type()) {
-                buffer.next();
-                continue;
-            }
-            break;
-        }
+        final List<SelectItem> items = selectItems();
         TableRef from = null;
         if (buffer.peek(0).isKw(Kw.FROM)) {
             buffer.next();
@@ -379,6 +368,29 @@ public final class SelectParser {
         final Token alias = joinStartAhead() ? null : parseAlias(profile.tableAliasAs());
         final int stop = null != alias ? alias.stop() : name.stop();
         return new TableName(first.start(), stop, qualifier, name.text(), null != alias ? alias.text() : null);
+    }
+
+    /** 投影清单：{@code expr [AS] alias} 逗号分隔（{@code *} / {@code t.*} 经表达式层 Star）；RETURNING 复用同形。 */
+    private List<SelectItem> selectItems() {
+        final List<SelectItem> items = new ArrayList<SelectItem>();
+        while (true) {
+            final Expr expr = exprs.parseExpr();
+            final Token alias = parseAlias(true);
+            items.add(new SelectItem(expr.start(), null != alias ? alias.stop() : expr.stop(), expr,
+                    null != alias ? alias.text() : null));
+            if (TokenType.COMMA == buffer.peek(0).type()) {
+                buffer.next();
+                continue;
+            }
+            break;
+        }
+        return items;
+    }
+
+    /** RETURNING 清单（PG DML 方言锚点）：消费 RETURNING + 投影同形清单（调用方以 dmlReturning 门禁）。 */
+    List<SelectItem> parseReturning() {
+        expectKw(Kw.RETURNING, "RETURNING");
+        return selectItems();
     }
 
     // ---------- 分页（方言形态，语义槽位统一 ast.Limit） ----------
