@@ -20,7 +20,7 @@
 - [x] F2 规格生成器 + 渲染器 + 往返对拍（2026-11-20，DESIGN v2.5：AstGenerator/AstRenderer/RoundTripTest 三断言；生成序=渲染序=参数访问序；抓出并修复内核缺陷 ×3——PG 词表 EXISTS 错归非保留、INSERT INTO first 误判多表、INSERT…SELECT 的 ODKU 尾缀被 CROSS 抢占；3 种子 5000×3 + 50000×3 ≈19.5 万条全绿）
 - [x] F3 变异模糊 + 元性质（2026-11-20，DESIGN v2.6：Mutator token 级五操作 + 封闭性/确定性/往返/偏移不变量两门禁 + 深度护栏新规格条目（同时 ≤256 共享预算，预声明兑现）；抓出并修复缺陷 ×4——分页形态参数序静默对调（数据损坏级，Limit.form 契约演进）/REGEXP 渲染漏收/R6 限定名公式校准/HAVING 独立渲染；同窗口冻结 PG RETURNING 契约演进（三 DML 语句追加 returning 字段，投影项同形零新节点，dmlReturning 开关 + 词表自限门禁 + corpus pg/dml-v1 22 条）；177 测试全绿，模糊多种子扫量全绿）
 - [x] F4 接受面矩阵 + 裁决台账（2026-11-20，DESIGN v2.7：AcceptanceMatrixTest——方言词表全词 × 四标识符槽位 2000 针快照门禁（快照即门禁）+ 契约卫生断言，26 格 UNSUPPORTED 与前置归类总表逐格核销；LEDGER.md v1.0 裁决台账（L1–L8，真值=服务器语法书）承接 §8 校准点；挂账六项全清——修复 || 方言优先级（pipesAsConcat 开关 + PREC_CONCAT=7，梯度 13→14 级，解析/渲染两侧独立同步）/Oracle RETURNING INTO 与 FETCH PERCENT/WITH TIES 分类（词表自限 + DML 尾前置归类 + 别名位只读前瞻，生成器采样撞出纯位置键控盲点），维持 Oracle CASE 族/裸 HAVING/REGEXP 族（补回归锚 DialectAdjudicationTest 17 用例）；196 测试全绿（core 150/diff 40/bench 6），模糊 3 种子 ×8000 变异体全绿）
-- [ ] F5 规格语法 + 同机 KPI（WHITELIST 写成 ANTLR4 规格语法仅进 bench 当陪练；同语言 ≥5x 冷热双态实测）
+- [x] F5 规格语法 + 同机 KPI（2026-11-20，DESIGN v2.8：BobaChopSpec.g4 并集规格语法（bench 陪练位，按 WHITELIST 独立翻译；容差 T1/T2/T3 单向声明+字符串转义两义双规则；UNION 尾锚结构化双向拒）+ SpecGrammarDifferentialTest 方向性对拍（160 条语料 + 2000 针矩阵重放差异 ≡ 0 + 28 负例双向拒 + 10 容差单向锁定）+ 同机 KPI 实测（稳态 p99 最差形态 UPDATE 5.5x ≥5x 达标、全形态 5.5–18.1x；冷启动 21.25ms vs 82.83ms = 3.9x；收敛 1.17x；R²=1.0000）；开发期对拍抓出语法侧缺陷 ×6；201 测试全绿——**对拍体系 v2 F1–F5 齐装**）
 
 任务状态：
 

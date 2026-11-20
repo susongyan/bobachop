@@ -2,7 +2,7 @@
 
 | 项 | 值 |
 |---|---|
-| 版本 | v1.2（对齐 DESIGN v2.7 / 对拍体系 v2 F4 接受面矩阵 + 裁决台账，2026-11-20 冻结） |
+| 版本 | v1.3（对齐 DESIGN v2.8 / 对拍体系 v2 F5 规格语法 + 同机 KPI，2026-11-20 冻结；语法面无变化——本版仅 §9 增规格语法陪练对拍行） |
 | 身份 | 白名单三件套之规格条目；解析器函数 = 可执行形态；corpus + 黄金用例 = CI 门禁 |
 | 调用面 | `BobaChop.parse(sql)` 默认 MySQL；`parse(sql, profile)` 显式方言（MYSQL / POSTGRESQL / ORACLE） |
 
@@ -161,4 +161,5 @@
 | SELECT | CorpusSelectV1Test / CorpusPgSelectV1Test / CorpusOracleSelectV1Test | SelectParserTest / PgParserTest / OracleParserTest |
 | DML | CorpusDmlV1Test | InsertParserTest / UpdateDeleteParserTest |
 | 接受面 | acceptance-matrix.tsv 快照（F4） | AcceptanceMatrixTest / DialectAdjudicationTest |
+| 规格语法陪练（F5） | —（bench 模块；方向性口径=内核收 ⇒ 语法收 ≡ 0，容差 T1/T2/T3 单向） | SpecGrammarDifferentialTest（bench：语料+矩阵重放+负例+容差锁定） |
 | 规格本身 | WhitelistDocTest（本文存在且版本与 DESIGN 版本记录对齐） | — |
