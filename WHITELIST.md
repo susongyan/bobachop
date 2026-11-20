@@ -2,7 +2,7 @@
 
 | 项 | 值 |
 |---|---|
-| 版本 | v1.1（对齐 DESIGN v2.6 / 对拍体系 v2 F1–F3 + PG RETURNING 契约演进，2026-11-20 冻结） |
+| 版本 | v1.2（对齐 DESIGN v2.7 / 对拍体系 v2 F4 接受面矩阵 + 裁决台账，2026-11-20 冻结） |
 | 身份 | 白名单三件套之规格条目；解析器函数 = 可执行形态；corpus + 黄金用例 = CI 门禁 |
 | 调用面 | `BobaChop.parse(sql)` 默认 MySQL；`parse(sql, profile)` 显式方言（MYSQL / POSTGRESQL / ORACLE） |
 
@@ -36,9 +36,11 @@
 - 运算符最长匹配：`<=>` `<=` `>=` `<>` `!=` `->` `->>` `<<` `>>` `||` `&&` 及单字符 `= > < | & + - * / % ^ ! ~`
 - 注释跳过但偏移记账不断链（全节点 start/stop 闭区间偏移）
 
-## 2. 表达式层（Pratt 单循环，13 级优先级）
+## 2. 表达式层（Pratt 单循环，14 级优先级；F4 起 `||` 按方言裁决）
 
-`OR=1 < XOR=2 < AND=3 < NOT=4 < BETWEEN=5 < 比较/IS/LIKE/IN/REGEXP=6 < |=7 < &=8 < 移位=9 < 加减=10 < 乘除模/DIV/MOD=11 < ^=12 < 一元=13`
+`OR=1 < XOR=2 < AND=3 < NOT=4 < BETWEEN=5 < 比较/IS/LIKE/IN/REGEXP=6 < 拼接 \|\|=7（PG/Oracle；MySQL 归 OR=1） < |=8 < &=9 < 移位=10 < 加减=11 < 乘除模/DIV/MOD=12 < ^=13 < 一元=14`
+
+**`||` 方言二义**（F4 裁决 L1，`DialectProfile.pipesAsConcat()`）：PG 语法书归"其他运算符"层、Oracle 手册与二元 `+/−` 同层（均高于比较级）→ 两方言 `a || b = c` 为 `(a || b) = c`；MySQL 默认 `\|\| = OR`（`PIPES_AS_CONCAT` 模式白名单外）→ `a || (b = c)`。已知残余偏差见 LEDGER L1（Oracle 混拼接与算术的无括号树、PG 位运算同层问题）。
 
 **支持**：
 - 字面量：NUMBER / HEX / BIT / STRING / NULL / TRUE / FALSE / TEMPORAL（`DATE|TIME|TIMESTAMP '...'` 前缀形态，保原文）
@@ -90,7 +92,7 @@
 
 **ParseException**：MySQL 修饰符（LOW_PRIORITY / DELAYED / HIGH_PRIORITY / IGNORE / REPLACE）/ `VALUES ROW()` 构造
 
-**RETURNING**（PG 方言锚点，`dmlReturning` 门禁；契约演进追加可空字段 `returning`）：INSERT/UPDATE/DELETE 尾部 `RETURNING 投影清单`——清单与 SELECT 投影项同形（`expr [AS] alias`、`*`、`t.*`）；渲染按清单序还原（别名规范为 AS 引导形态）。RETURNING 词仅 PG 关键字表收录：MySQL/Oracle 语句尾出现即"语句后多余 token" ParseException（方言自限，无显式门禁分支）；PG 的 SELECT 语句尾出现同此（RETURNING 为 DML 专属子句）。
+**RETURNING**（PG 方言锚点，`dmlReturning` 门禁；契约演进追加可空字段 `returning`）：INSERT/UPDATE/DELETE 尾部 `RETURNING 投影清单`——清单与 SELECT 投影项同形（`expr [AS] alias`、`*`、`t.*`）；渲染按清单序还原（别名规范为 AS 引导形态）。RETURNING 词入 PG 保留集与 Oracle 非保留集（F4 裁决 L5）：MySQL 无此词，语句尾"多余 token" ParseException（方言自限）；Oracle DML 尾由子语法器前置归类 Unsupported（合法方言语法 RETURNING INTO、契约待演进），且目标表别名位以只读前瞻消歧（后随 WHERE/SET/EOF/`;` 为别名用法仍收，后随投影/INTO 为子句锚点）；SELECT 语句尾三方言一致 ParseException（DML 专属子句）。
 
 ## 5. UPDATE / DELETE 白名单
 
@@ -106,7 +108,8 @@
 | `fetchFirstPagination`（OFFSET/FETCH 标准族） | ✗ | ✓ | ✓ |
 | `tableAliasAs`（表位/派生表位 AS 引导） | ✓ | ✓ | ✗ ParseException（列位 AS 恒允许） |
 | `multiTableInsert`（INSERT ALL/FIRST 前置归类） | ✗ | ✗ | ✓ |
-| `dmlReturning`（DML 尾部 RETURNING 清单） | ✗ ParseException | ✓ | ✗ ParseException |
+| `dmlReturning`（DML 尾部 RETURNING 清单） | ✗ ParseException | ✓ | ✗ Unsupported（RETURNING INTO 前置归类，词入非保留表） |
+| `pipesAsConcat`（`\|\|` 拼接高于比较级） | ✗（\|\| = OR） | ✓ | ✓ |
 
 关键字表装配：MySQL = Kw 主段全集 − 方言追加段（PG/Oracle 专有词在 MySQL 为普通标识符）；PG / Oracle = 保留字集 ∪ 语法键控非保留字集。子句锚点词（PG 的 OFFSET/FETCH、Oracle 的 OFFSET/FETCH/USING）入保留集——表别名位必须让位给子句。
 
@@ -130,8 +133,11 @@
 | 括号化表引用（嵌套 JOIN） | 表因子位 | 三方言 |
 | 多级限定表名（上限 db.t） | 表名解析 | 三方言 |
 | 分页族窄口（裸 OFFSET / LIMIT ALL / 并用 / 省略计数） | 分页解析 | 按方言形态 |
+| RETURNING INTO 子句 | DML 语句尾（SELECT 尾恒 ParseException） | Oracle（F4 裁决 L5） |
+| `FETCH FIRST n PERCENT`（按百分比取数） | FETCH 计数后 | Oracle（PERCENT 词表自限，仅 Oracle 表收录） |
+| `FETCH ... WITH TIES`（并列行取回） | FETCH 的 ROW/ROWS 后 | PG / Oracle（合法方言语法，契约无锚） |
 
-## 8. 已知超集与窄口（对拍校准点）
+## 8. 已知超集与窄口（对拍校准点；F4 起由 LEDGER.md 裁决台账逐条承接，本节为规格侧摘要）
 
 接受面**超集**（本内核接受、个别方言自身拒绝；AST 存原文不做跨方言语义归一化，D8）：
 - 运算符表为三方言并集：`<=>` `&&` `!` `^` `%` 等在部分方言本无（如 Oracle 无 `%` 取模算子、PG 无 `<=>`）
@@ -139,9 +145,8 @@
 - MySQL DUAL 为语法键控非保留：`SELECT dual FROM t`（列名）亦解析，MySQL 本拒
 - 列限定名链不限级（`a.b.c.d`），schema 语义由集成方校验
 
-窄口（理想分类与现状的差异，对拍接入后校准）：
+窄口（理想分类与现状的差异，对拍接入后校准；裁决记录见 LEDGER.md）：
 - 多表 INSERT 在 MySQL 方言误报 UnsupportedSyntaxException（本应 ParseException；拒绝事实不变，仅异常类型）
-- `FETCH FIRST n PERCENT` / `WITH TIES`（Oracle 12c+）→ ParseException（理想为 Unsupported）
 - `USER` 作裸表达式（Oracle）→ ParseException（同词为 PG 保留字，T10 已冻结该分类，未并入伪列 Unsupported 族）
 - q-字符串 `q'[...]'` 与绑定变量 `:1` / `:name` → 词法/语法错误路径拒绝
 - `(+)` 外连接算符（Oracle）→ ParseException
@@ -155,4 +160,5 @@
 | 表达式 | — | ExprParserTest |
 | SELECT | CorpusSelectV1Test / CorpusPgSelectV1Test / CorpusOracleSelectV1Test | SelectParserTest / PgParserTest / OracleParserTest |
 | DML | CorpusDmlV1Test | InsertParserTest / UpdateDeleteParserTest |
+| 接受面 | acceptance-matrix.tsv 快照（F4） | AcceptanceMatrixTest / DialectAdjudicationTest |
 | 规格本身 | WhitelistDocTest（本文存在且版本与 DESIGN 版本记录对齐） | — |

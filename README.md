@@ -7,6 +7,6 @@
 - 设计规格（单一事实源）：[DESIGN.md](DESIGN.md)
 - 支持面规格（白名单三件套）：[WHITELIST.md](WHITELIST.md)
 - 模块规划：`boba-chop-core` / `boba-chop-diff`（对拍框架）/ `boba-chop-bench` / `corpus/`
-- 状态：M0–M4 完成 + 对拍体系 v2 F1–F3（DESIGN v2.6，2026-11-20）——三方言 DML 白名单（含 PG RETURNING）+ 偏移不变量门禁 + 生成往返对拍 + 变异模糊（三支异常封闭性 / 深度护栏 / 分页形态参数序保真）
+- 状态：M0–M4 完成 + 对拍体系 v2 F1–F4（DESIGN v2.7，2026-11-20）——三方言 DML 白名单（含 PG RETURNING）+ 偏移不变量门禁 + 生成往返对拍 + 变异模糊（三支异常封闭性 / 深度护栏 / 分页形态参数序保真）+ 接受面矩阵快照门禁与裁决台账（[LEDGER.md](LEDGER.md)，`||` 方言优先级等八项裁决）
 
 配套项目：[BobaPour](https://github.com/susongyan/bobapour) — 基于 BobaChop 的分库分表 + 透明加密中间件。
