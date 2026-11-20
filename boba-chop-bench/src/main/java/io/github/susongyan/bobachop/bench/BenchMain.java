@@ -11,17 +11,20 @@ import java.util.List;
 import java.util.Map;
 
 import io.github.susongyan.bobachop.api.BobaChop;
+import io.github.susongyan.bobachop.bench.spec.SpecGrammarDriver;
 
 /**
  * 基准入口（T9，DESIGN §8/§12）。用法：
  * <pre>
- *   java ...BenchMain [--quick] [--out &lt;dir&gt;]   # 全场景：冷启动(子JVM) + 首走 + 稳态 + 线性度
+ *   java ...BenchMain [--quick] [--out &lt;dir&gt;]   # 全场景：冷启动(子JVM双列) + 首走 + 稳态 + 陪练对打 + 线性度
  *   java ...BenchMain --cold-child                # 内部协议：全新 JVM 首调计时
+ *   java ...BenchMain --cold-child-spec           # 内部协议：全新 JVM 陪练(ANTLR4 规格语法)首调计时
  * </pre>
  *
  * <p><b>方法与口径</b>：无 JMH 手写基准（D6 零依赖）。逐次计时含两次 nanoTime 开销
- * （Linux 约 20~40ns，µs 级样本误差 &lt;1%）；sink 累计防死码消除；ANTLR4 对照取 §1.1
- * 实测基线（不同硬件，仅量级对照，非同机比值）——同机 live 对拍待 ANTLR4 参考执行器接入。
+ * （Linux 约 20~40ns，µs 级样本误差 &lt;1%）；sink 累计防死码消除。同机对拍自 F5 落地：
+ * 陪练 = ANTLR4 规格语法（BobaChopSpec.g4，bench 模块内，WHITELIST 可执行化）——
+ * 冷启动双列 + 稳态逐形态对打见 spec-sparring 场景；§1.1 实测基线为跨硬件量级对照保留。
  * KPI 判定只写入报告不作构建门禁（性能数字机器相关）。</p>
  */
 public final class BenchMain {
@@ -29,6 +32,10 @@ public final class BenchMain {
     public static void main(final String[] args) throws Exception {
         if (0 < args.length && "--cold-child".equals(args[0])) {
             runColdChild();
+            return;
+        }
+        if (0 < args.length && "--cold-child-spec".equals(args[0])) {
+            runColdChildSpec();
             return;
         }
         boolean quick = false;
@@ -44,11 +51,13 @@ public final class BenchMain {
         if (quick) {
             results.put("first-walk", new FirstWalkScenario(2_000, 300).run());
             results.put("steady-state", new SteadyStateScenario(300, 3_000, 300).run());
+            results.put("spec-sparring", new SpecSparringScenario(300, 3_000, 300).run());
             results.put("linearity", new LinearityScenario(new int[]{50, 100, 200}, 20, 5).run());
         } else {
             results.put("cold-start", new ColdStartScenario(3).run());
             results.put("first-walk", new FirstWalkScenario(30_000, 20_000).run());
             results.put("steady-state", new SteadyStateScenario(2_000, 20_000, 2_000).run());
+            results.put("spec-sparring", new SpecSparringScenario(2_000, 20_000, 2_000).run());
             results.put("linearity", new LinearityScenario(new int[]{100, 300, 1000}, 200, 30).run());
         }
         final String markdown = render(results);
@@ -68,6 +77,15 @@ public final class BenchMain {
         final long elapsed = System.nanoTime() - t0;
         System.out.println("cold-first-ns=" + elapsed);
         System.out.println("sink=" + sink);
+    }
+
+    /** 子 JVM 协议（F5 陪练）：ANTLR4 规格语法首调并上报（ATN 反序列化 + 生成类加载全计入）。 */
+    private static void runColdChildSpec() {
+        final long t0 = System.nanoTime();
+        final boolean sink = SpecGrammarDriver.accepts(Shapes.SIMPLE_SELECT);
+        final long elapsed = System.nanoTime() - t0;
+        System.out.println("cold-first-ns=" + elapsed);
+        System.out.println("sink=" + (sink ? 1 : 0));
     }
 
     private static String render(final Map<String, List<Metric>> results) {
@@ -114,8 +132,33 @@ public final class BenchMain {
             md.append("- 长 SQL 线性度 R² ≥ 0.99: ").append(String.format("%.4f", r2.value))
                     .append(" → ").append(r2.value >= 0.99 ? "达标" : "未达标").append('\n');
         }
-        md.append("- 稳态 p99 较 ANTLR4 ≥5x：待同机 live 对拍（参考执行器接入后补测；§1.1 基线非同机）\n");
+        if (results.containsKey("spec-sparring")) {
+            final Metric worst = worstSparringRatio(results);
+            md.append("- 稳态 p99 较同机 ANTLR4 规格语法 ≥5x: 最差形态「")
+                    .append(worst.label.replace(" p99倍率(陪练/内核)", ""))
+                    .append("」= ").append(String.format("%.1f", worst.value))
+                    .append("x → ").append(worst.value >= 5 ? "达标" : "未达标").append('\n');
+        }
+        if (results.containsKey("cold-start")) {
+            final Metric cold = find(results, "cold-start", "冷启动陪练倍率(ANTLR4/内核)");
+            md.append("- 冷启动同机陪练倍率(ANTLR4/内核): ").append(String.format("%.1f", cold.value))
+                    .append("x（双列对照，量级验证 §3.1 冷启动量级假设）\n");
+        }
         return md.toString();
+    }
+
+    /** 陪练对打最差 p99 倍率形态（≥5x 判定取最差值——任一形态不达标即未达标）。 */
+    private static Metric worstSparringRatio(final Map<String, List<Metric>> results) {
+        Metric worst = null;
+        for (final Metric metric : results.get("spec-sparring")) {
+            if (metric.label.endsWith("p99倍率(陪练/内核)") && (null == worst || metric.value < worst.value)) {
+                worst = metric;
+            }
+        }
+        if (null == worst) {
+            throw new IllegalStateException("spec-sparring 指标缺失: p99倍率");
+        }
+        return worst;
     }
 
     private static Metric find(final Map<String, List<Metric>> results, final String scenario, final String label) {

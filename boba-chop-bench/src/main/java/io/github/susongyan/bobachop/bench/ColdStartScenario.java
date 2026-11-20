@@ -29,24 +29,34 @@ final class ColdStartScenario implements Scenario {
     @Override
     public List<Metric> run() {
         final long[] samples = new long[repeats];
+        final long[] specSamples = new long[repeats];
         final List<Metric> metrics = new ArrayList<Metric>();
         try {
             for (int i = 0; i < repeats; i++) {
-                samples[i] = spawnChildAndMeasure();
+                samples[i] = spawnChildAndMeasure("--cold-child");
                 metrics.add(new Metric("冷启第" + (i + 1) + "次(全新JVM)", samples[i], "ns", null));
+            }
+            // F5 同机陪练：ANTLR4 规格语法同协议子 JVM 首调（ATN 反序列化 + 生成类加载全计入）
+            for (int i = 0; i < repeats; i++) {
+                specSamples[i] = spawnChildAndMeasure("--cold-child-spec");
+                metrics.add(new Metric("冷启第" + (i + 1) + "次(全新JVM,陪练ANTLR4)", specSamples[i], "ns", null));
             }
         } catch (final Exception e) {
             throw new IllegalStateException("冷启动子进程失败", e);
         }
         metrics.add(new Metric("冷启动中位", Stats.median(samples), "ns", null));
+        metrics.add(new Metric("冷启动中位(陪练ANTLR4)", Stats.median(specSamples), "ns", null));
+        // median 返回 long——先展宽再除，否则整数除法截断倍率
+        metrics.add(new Metric("冷启动陪练倍率(ANTLR4/内核)",
+                Math.round(Stats.median(specSamples) * 10.0 / Stats.median(samples)) / 10.0, "x", null));
         return metrics;
     }
 
-    private long spawnChildAndMeasure() throws Exception {
+    private long spawnChildAndMeasure(final String childMode) throws Exception {
         final String java = System.getProperty("java.home") + "/bin/java";
         final String classpath = System.getProperty("java.class.path");
         final ProcessBuilder builder = new ProcessBuilder(java, "-cp", classpath,
-                BenchMain.class.getName(), "--cold-child");
+                BenchMain.class.getName(), childMode);
         builder.redirectErrorStream(false);
         final Process process = builder.start();
         long firstNs = -1;

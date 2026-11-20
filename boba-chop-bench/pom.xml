@@ -20,10 +20,46 @@
             <artifactId>boba-chop-core</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!--
+            ANTLR4 规格语法（F5）：WHITELIST 可执行化陪练，仅进 bench 模块。
+            core/diff 零第三方运行时依赖红线不破（内核不用、diff 不用）；
+            陪练不当裁判（D7）——差异裁决权在 LEDGER 台账与服务器语法书。
+        -->
+        <dependency>
+            <groupId>org.antlr</groupId>
+            <artifactId>antlr4-runtime</artifactId>
+            <version>4.13.2</version>
+        </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <!--
+                BobaChopSpec.g4 代码生成：sourceDirectory 约定 = src/main/antlr4，
+                目录即包名（io.github.susongyan.bobachop.bench.spec）。
+                生成物落 target/generated-sources（checkstyle/CI 只扫 src 下 *.java，不触及）。
+            -->
+            <plugin>
+                <groupId>org.antlr</groupId>
+                <artifactId>antlr4-maven-plugin</artifactId>
+                <version>4.13.2</version>
+                <configuration>
+                    <listener>false</listener>
+                    <visitor>false</visitor>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>antlr4</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

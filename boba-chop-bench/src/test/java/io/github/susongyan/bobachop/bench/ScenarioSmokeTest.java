@@ -17,6 +17,7 @@ final class ScenarioSmokeTest {
     void 温场景缩规模可跑且指标有限() {
         assertSane(new FirstWalkScenario(200, 50).run());
         assertSane(new SteadyStateScenario(100, 500, 100).run());
+        assertSane(new SpecSparringScenario(100, 500, 100).run());
         assertSane(new LinearityScenario(new int[]{10, 20, 40}, 5, 3).run());
     }
 
