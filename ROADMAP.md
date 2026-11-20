@@ -13,10 +13,14 @@
 
 对外依赖：无。下游约定：boba-pour 的 M0 依赖本仓 T2（AST 冻结）、M2 依赖本仓 M1。
 
-跟进项：
+跟进项（对拍体系 v2，DESIGN v2.4 定稿——真值分工见 D7：外部引擎不当验收器）：
 
 - [x] WHITELIST.md 三件套显式化（2026-11-19，v1.0 对齐 DESIGN v2.3：支持面/开关矩阵/前置归类总表/超集窄口校准点 + WhitelistDocTest 版本对齐门禁）
-- [ ] ANTLR4 参考执行器适配（fork-AST→自有 AST 映射器，双内核真对拍 + 同机 ≥5x KPI 实测；三张关键字表与超集窄口的验收器）
+- [x] F1 偏移不变量校验器（2026-11-20，DESIGN v2.4：SpanWalker/SpanInvariants 六条 + 三门禁；真值=输入串+独立词法标尺；抓出并修复 SelectSource span 倒挂 D5 缺陷；三方言全语料 138 条全绿）
+- [ ] F2 规格生成器 + 渲染器 + 往返对拍（AST 先行生成→渲染→重解析判等；生成器以 DialectProfile 参数化、标识符从方言非保留字表采样专打别名位；canonical printer 为 boba-pour 改写付首付）
+- [ ] F3 变异模糊 + 元性质（token 变异：三支异常封闭性 / parse∘render 幂等 / 结果确定性；预声明：深度护栏大概率浮出为新规格条目）
+- [ ] F4 接受面矩阵 + 裁决台账（关键字×槽位枚举三分类矩阵 + sql_yacc.yy/gram.y/Oracle 手册人工裁决；§8 校准点升级为活台账）
+- [ ] F5 规格语法 + 同机 KPI（WHITELIST 写成 ANTLR4 规格语法仅进 bench 当陪练；同语言 ≥5x 冷热双态实测）
 
 任务状态：
 
