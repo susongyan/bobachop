@@ -2,7 +2,7 @@
 
 | 项 | 值 |
 |---|---|
-| 版本 | v1.0（对齐 DESIGN v2.3 / 任务 T1–T11，2026-11-19 冻结） |
+| 版本 | v1.1（对齐 DESIGN v2.6 / 对拍体系 v2 F1–F3 + PG RETURNING 契约演进，2026-11-20 冻结） |
 | 身份 | 白名单三件套之规格条目；解析器函数 = 可执行形态；corpus + 黄金用例 = CI 门禁 |
 | 调用面 | `BobaChop.parse(sql)` 默认 MySQL；`parse(sql, profile)` 显式方言（MYSQL / POSTGRESQL / ORACLE） |
 
