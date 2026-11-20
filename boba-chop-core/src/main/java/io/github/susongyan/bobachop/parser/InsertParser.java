@@ -51,13 +51,15 @@ public final class InsertParser {
 
     Statement parseStatement() {
         final Token insert = expectKw(Kw.INSERT, "INSERT");
+        // Oracle 多表 INSERT（ALL/FIRST）：合法 Oracle 语法但契约为单表，前置归类。
+        // 必须在消费 INTO 前判且仅 Oracle 判——INSERT INTO first 的 first 是表名
+        //（F2 往返对拍抓出的误判）；MySQL 下 FIRST 非保留字可作表名，ALL 表名位自然拒绝
+        if (profile.multiTableInsert()
+                && (buffer.peek(0).isKw(Kw.ALL) || buffer.peek(0).isKw(Kw.FIRST))) {
+            throw unsupported("多表 INSERT（ALL/FIRST，契约为单表）", buffer.peek(0));
+        }
         if (buffer.peek(0).isKw(Kw.INTO)) {
             buffer.next();
-        }
-        // Oracle 多表 INSERT（ALL/FIRST）：合法 Oracle 语法但契约为单表，前置归类
-        //（ALL/FIRST 在 MySQL 语法下 INSERT 后无合法形态，误触发仅影响异常类型不影响拒绝事实）
-        if (buffer.peek(0).isKw(Kw.ALL) || buffer.peek(0).isKw(Kw.FIRST)) {
-            throw unsupported("多表 INSERT（ALL/FIRST，契约为单表）", buffer.peek(0));
         }
         final TableName table = parseTargetTable();
         List<String> columns = null;

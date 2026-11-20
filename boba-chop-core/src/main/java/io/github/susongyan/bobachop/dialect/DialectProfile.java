@@ -50,4 +50,13 @@ public abstract class DialectProfile {
      * {@code FROM t AS a}，列别名两方言皆允许 {@code AS}——列位恒开）。
      */
     public abstract boolean tableAliasAs();
+
+    /**
+     * 是否存在多表 INSERT（{@code INSERT ALL/FIRST}）语法形态（仅 Oracle）：用于白名单外
+     * 语法的前置归类。MySQL 下 FIRST 为非保留字——{@code INSERT first VALUES} 合法，
+     * 不能前置拒绝；PG 无该形态（ALL 为保留字，表名位自然拒绝）。
+     */
+    public boolean multiTableInsert() {
+        return false;
+    }
 }

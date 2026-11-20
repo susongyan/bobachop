@@ -104,4 +104,9 @@ final class OracleDialect extends DialectProfile {
     public boolean tableAliasAs() {
         return false;
     }
+
+    @Override
+    public boolean multiTableInsert() {
+        return true;
+    }
 }

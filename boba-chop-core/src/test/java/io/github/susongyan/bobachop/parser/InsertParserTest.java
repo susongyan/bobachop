@@ -102,6 +102,25 @@ final class InsertParserTest {
     }
 
     @Test
+    void 表名为非保留字first不误判多表INSERT_f2修复回归() {
+        // ALL/FIRST 检查曾在消费 INTO 后执行：INSERT INTO first 的 first 是表名却被误判
+        final InsertStatement insert = (InsertStatement) BobaChop.parse(
+                "INSERT INTO first (id) VALUES (1)");
+        assertEquals("first", insert.table().name());
+    }
+
+    @Test
+    void insertSelect的CROSS_JOIN后ODKU尾缀_f2修复回归() {
+        // ON DUPLICATE KEY UPDATE 的 ON 属于外层 INSERT，不是 CROSS 的连接条件
+        final InsertStatement insert = (InsertStatement) BobaChop.parse(
+                "INSERT INTO t SELECT a.id FROM a CROSS JOIN b ON DUPLICATE KEY UPDATE cnt = 1");
+        assertEquals(1, insert.onDuplicateKey().size());
+        // 真正的 CROSS 带 ON 仍前置归类
+        assertThrows(UnsupportedSyntaxException.class,
+                () -> BobaChop.parse("SELECT * FROM a CROSS JOIN b ON a.id = b.id"));
+    }
+
+    @Test
     void insertSelect数据源span不倒挂_f1修复回归() {
         // F1 对拍体系（SpanInvariants R1）抓出的缺陷回归：SelectSource 构造时
         // lastStop() 抢在子解析前求值，stop = SELECT 前一 token 终点 → span 倒挂

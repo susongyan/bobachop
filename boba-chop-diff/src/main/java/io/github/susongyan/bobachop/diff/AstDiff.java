@@ -44,11 +44,29 @@ public final class AstDiff {
     /** 比较两棵树（通常为两侧执行器产出的语句根节点），返回全部差异；空清单即全等。 */
     public static List<DiffDifference> compare(final Object expected, final Object actual) {
         final List<DiffDifference> out = new ArrayList<DiffDifference>();
-        walk("", expected, actual, out);
+        walk("", expected, actual, out, Collections.<String>emptySet());
         return out;
     }
 
-    private static void walk(final String path, final Object expected, final Object actual, final List<DiffDifference> out) {
+    /**
+     * 结构比较（跳过 {@code start}/{@code stop} 位置字段）：对拍体系 F2 往返对拍用——
+     * 同一棵树在不同文本上重建，位置必然不同，形态与其余字段必须全等。
+     */
+    public static List<DiffDifference> compareStructure(final Object expected, final Object actual) {
+        final List<DiffDifference> out = new ArrayList<DiffDifference>();
+        walk("", expected, actual, out, POSITION_FIELDS);
+        return out;
+    }
+
+    private static final Set<String> POSITION_FIELDS;
+
+    static {
+        final Set<String> fields = new HashSet<String>(Arrays.asList("start", "stop"));
+        POSITION_FIELDS = Collections.unmodifiableSet(fields);
+    }
+
+    private static void walk(final String path, final Object expected, final Object actual, final List<DiffDifference> out,
+            final Set<String> ignored) {
         if (null == expected && null == actual) {
             return;
         }
@@ -63,7 +81,7 @@ public final class AstDiff {
             return;
         }
         if (expected instanceof List) {
-            walkList(path, (List<?>) expected, (List<?>) actual, out);
+            walkList(path, (List<?>) expected, (List<?>) actual, out, ignored);
             return;
         }
         if (isValueType(expectedClass)) {
@@ -72,23 +90,28 @@ public final class AstDiff {
             }
             return;
         }
-        walkFields(path, expectedClass, expected, actual, out);
+        walkFields(path, expectedClass, expected, actual, out, ignored);
     }
 
-    private static void walkList(final String path, final List<?> expected, final List<?> actual, final List<DiffDifference> out) {
+    private static void walkList(final String path, final List<?> expected, final List<?> actual, final List<DiffDifference> out,
+            final Set<String> ignored) {
         if (expected.size() != actual.size()) {
             out.add(new DiffDifference(child(path, "size"), String.valueOf(expected.size()), String.valueOf(actual.size())));
             return;
         }
         for (int i = 0; i < expected.size(); i++) {
-            walk(path + "[" + i + "]", expected.get(i), actual.get(i), out);
+            walk(path + "[" + i + "]", expected.get(i), actual.get(i), out, ignored);
         }
     }
 
-    private static void walkFields(final String path, final Class<?> type, final Object expected, final Object actual, final List<DiffDifference> out) {
+    private static void walkFields(final String path, final Class<?> type, final Object expected, final Object actual, final List<DiffDifference> out,
+            final Set<String> ignored) {
         for (Class<?> c = type; null != c && c != Object.class; c = c.getSuperclass()) {
             for (final Field field : sortedFields(c)) {
-                walk(child(path, field.getName()), read(field, expected), read(field, actual), out);
+                if (ignored.contains(field.getName())) {
+                    continue;
+                }
+                walk(child(path, field.getName()), read(field, expected), read(field, actual), out, ignored);
             }
         }
     }

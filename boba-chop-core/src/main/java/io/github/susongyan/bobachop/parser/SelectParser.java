@@ -227,10 +227,15 @@ public final class SelectParser {
             if (buffer.peek(0).isKw(Kw.ON)) {
                 // 契约：CROSS/COMMA 两条件皆空；CROSS ... ON 语法合法但契约不可表达
                 if (JoinType.CROSS == type) {
-                    throw unsupported("CROSS JOIN 带 ON（契约：CROSS 无条件）", buffer.peek(0));
+                    // 例外：INSERT...SELECT 尾缀 ON DUPLICATE KEY UPDATE 的 ON 属于外层
+                    // INSERT（F2 往返对拍抓出；DUPLICATE 仅 MySQL 词表收录，邻接检查方言自限）
+                    if (!onDuplicateKeyAhead()) {
+                        throw unsupported("CROSS JOIN 带 ON（契约：CROSS 无条件）", buffer.peek(0));
+                    }
+                } else {
+                    buffer.next();
+                    condition = exprs.parseExpr();
                 }
-                buffer.next();
-                condition = exprs.parseExpr();
             } else if (buffer.peek(0).isKw(Kw.USING)) {
                 if (JoinType.CROSS == type) {
                     throw unsupported("CROSS JOIN 带 USING（契约：CROSS 无条件）", buffer.peek(0));
@@ -277,6 +282,11 @@ public final class SelectParser {
                     || next.isKw(Kw.CROSS) || next.isKw(Kw.JOIN) || next.isKw(Kw.FULL);
         }
         return Kw.OUTER == token.kw();
+    }
+
+    /** 只读判断：ON 之后是否 INSERT 尾缀 ODKU 邻接（DUPLICATE 仅 MySQL 词表收录，方言自限）。 */
+    private boolean onDuplicateKeyAhead() {
+        return buffer.peek(1).isKw(Kw.DUPLICATE) && buffer.peek(2).isKw(Kw.KEY) && buffer.peek(3).isKw(Kw.UPDATE);
     }
 
     /** 只读判断：当前位置是否 JOIN 关键字形态（不改游标，D2 只读前瞻）。 */

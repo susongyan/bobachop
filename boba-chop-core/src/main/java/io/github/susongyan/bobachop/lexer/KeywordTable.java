@@ -44,6 +44,13 @@ public final class KeywordTable {
         return reserved.contains(kw);
     }
 
+    /** 本方言非保留字集（可作未包裹标识符，D9）——对拍体系 F2 生成器的标识符采样位。 */
+    public Set<Kw> nonReservedWords() {
+        final Set<Kw> out = EnumSet.copyOf(words.values());
+        out.removeAll(reserved);
+        return out;
+    }
+
     /** MySQL 8.0 关键字表（Kw 主段全集，不含方言追加段）。 */
     public static KeywordTable mySql() {
         return MY_SQL;

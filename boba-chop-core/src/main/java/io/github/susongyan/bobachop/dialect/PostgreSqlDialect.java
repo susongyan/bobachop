@@ -33,11 +33,13 @@ final class PostgreSqlDialect extends DialectProfile {
             Kw.LIMIT, Kw.LOCALTIME, Kw.LOCALTIMESTAMP, Kw.NOT, Kw.NULL, Kw.OFFSET, Kw.ON, Kw.ONLY,
             Kw.OR, Kw.ORDER, Kw.PLACING, Kw.PRIMARY, Kw.REFERENCES, Kw.RETURNING, Kw.SELECT,
             Kw.SESSION_USER, Kw.SOME, Kw.SYMMETRIC, Kw.TABLE, Kw.THEN, Kw.TO, Kw.TRAILING, Kw.TRUE,
-            Kw.UNION, Kw.UNIQUE, Kw.USER, Kw.USING, Kw.VARIADIC, Kw.WHEN, Kw.WHERE, Kw.WINDOW, Kw.WITH);
+            Kw.UNION, Kw.UNIQUE, Kw.USER, Kw.USING, Kw.VARIADIC, Kw.WHEN, Kw.WHERE, Kw.WINDOW, Kw.WITH,
+            // EXISTS：附录 C 亦为保留；本内核在表达式头键控（谓词必跟 (），F2 往返对拍抓出
+            Kw.EXISTS);
 
     /** 语法键控的非保留字（本内核语法锚点；在 PG 中可作标识符，语法器按位置裁决）。 */
     private static final Set<Kw> PG_NON_RESERVED = EnumSet.of(
-            Kw.BETWEEN, Kw.BY, Kw.CONFLICT, Kw.CROSS, Kw.DATE, Kw.DELETE, Kw.ESCAPE, Kw.EXISTS,
+            Kw.BETWEEN, Kw.BY, Kw.CONFLICT, Kw.CROSS, Kw.DATE, Kw.DELETE, Kw.ESCAPE,
             Kw.FIRST, Kw.INNER, Kw.INSERT, Kw.JOIN, Kw.LEFT, Kw.LIKE, Kw.LOCK, Kw.NATURAL, Kw.NEXT,
             Kw.OUTER, Kw.PROCEDURE, Kw.RIGHT, Kw.ROW, Kw.ROWS, Kw.SET, Kw.TIME, Kw.TIMESTAMP,
             Kw.UPDATE, Kw.VALUES);
