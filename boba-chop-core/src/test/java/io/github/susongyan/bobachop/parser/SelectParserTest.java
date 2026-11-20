@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test;
 
 import io.github.susongyan.bobachop.api.BobaChop;
 import io.github.susongyan.bobachop.ast.BinaryExpr;
-import io.github.susongyan.bobachop.ast.ColumnRef;
 import io.github.susongyan.bobachop.ast.CompoundSelect;
 import io.github.susongyan.bobachop.ast.DerivedTable;
 import io.github.susongyan.bobachop.ast.ExistsExpr;
@@ -25,13 +24,11 @@ import io.github.susongyan.bobachop.ast.Literal;
 import io.github.susongyan.bobachop.ast.OrderByItem;
 import io.github.susongyan.bobachop.ast.OrderDirection;
 import io.github.susongyan.bobachop.ast.ParameterMarker;
-import io.github.susongyan.bobachop.ast.SelectItem;
 import io.github.susongyan.bobachop.ast.SelectStatement;
 import io.github.susongyan.bobachop.ast.SetOperator;
 import io.github.susongyan.bobachop.ast.Statement;
 import io.github.susongyan.bobachop.ast.SubqueryExpr;
 import io.github.susongyan.bobachop.ast.TableName;
-import io.github.susongyan.bobachop.ast.TableRef;
 import io.github.susongyan.bobachop.exception.ParseException;
 import io.github.susongyan.bobachop.exception.UnsupportedSyntaxException;
 

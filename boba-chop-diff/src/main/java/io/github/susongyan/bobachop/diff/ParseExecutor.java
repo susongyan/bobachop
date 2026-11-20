@@ -1,7 +1,5 @@
 package io.github.susongyan.bobachop.diff;
 
-import io.github.susongyan.bobachop.ast.Statement;
-
 /**
  * 对拍执行器：SQL 文本 → AST（或失败观测值）。
  *

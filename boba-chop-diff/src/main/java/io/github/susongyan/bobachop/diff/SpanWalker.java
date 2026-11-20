@@ -8,7 +8,6 @@ import io.github.susongyan.bobachop.ast.Assignment;
 import io.github.susongyan.bobachop.ast.BetweenExpr;
 import io.github.susongyan.bobachop.ast.BinaryExpr;
 import io.github.susongyan.bobachop.ast.CaseExpr;
-import io.github.susongyan.bobachop.ast.ColumnRef;
 import io.github.susongyan.bobachop.ast.CompoundSelect;
 import io.github.susongyan.bobachop.ast.DeleteStatement;
 import io.github.susongyan.bobachop.ast.DerivedTable;

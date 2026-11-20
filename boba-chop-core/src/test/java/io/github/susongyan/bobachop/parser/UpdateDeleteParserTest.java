@@ -2,16 +2,13 @@ package io.github.susongyan.bobachop.parser;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.susongyan.bobachop.api.BobaChop;
-import io.github.susongyan.bobachop.ast.Assignment;
 import io.github.susongyan.bobachop.ast.BinaryExpr;
-import io.github.susongyan.bobachop.ast.ColumnRef;
 import io.github.susongyan.bobachop.ast.DeleteStatement;
 import io.github.susongyan.bobachop.ast.ParameterMarker;
 import io.github.susongyan.bobachop.ast.SubqueryExpr;
