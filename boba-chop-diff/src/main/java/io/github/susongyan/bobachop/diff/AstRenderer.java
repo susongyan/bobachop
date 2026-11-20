@@ -44,10 +44,11 @@ import io.github.susongyan.bobachop.dialect.DialectProfile;
  * {@code OFFSET o ROWS FETCH FIRST n ROWS ONLY}，MySQL/PG 用 {@code LIMIT n [OFFSET m]}；
  * 连接词 INNER/LEFT/RIGHT JOIN + ON/USING，CROSS/逗号无条件。</p>
  *
- * <p><b>表达式最小括号化</b>（优先级表镜像 WHITELIST §2 的 13 级，与内核
- * infixBindingPower 同源同值——本表按规格书写，是对内核表的独立复述）：
+ * <p><b>表达式最小括号化</b>（优先级表镜像 WHITELIST §2 的 14 级，与内核
+ * infixBindingPower 同源同值——本表按规格书写，是对内核表的独立复述；{@code ||}
+ * 一级按 {@link DialectProfile#pipesAsConcat()} 方言裁决，F4 裁决 L1）：
  * 左结合二元——左子裸当且仅当 子优先级 ≥ 父，右子裸当且仅当 子优先级 &gt; 父；
- * 前缀一元操作数须 ≥ 13 级；BETWEEN/IN/LIKE/IS 的目标须 &gt; 5/6 级。
+ * 前缀一元操作数须 ≥ 14 级；BETWEEN/IN/LIKE/IS 的目标须 &gt; 5/6 级。
  * 原子（字面量/列/函数/CASE/参数）恒不括号。</p>
  *
  * <p>F2 往返断言三件：{@code parse(render(ast))} 结构全等（AstDiff.compareStructure）、
@@ -56,20 +57,21 @@ import io.github.susongyan.bobachop.dialect.DialectProfile;
  */
 public final class AstRenderer {
 
-    // 优先级表（WHITELIST §2；数值与 ExprParser 常量一致）
+    // 优先级表（WHITELIST §2；数值与 ExprParser 常量一致；|| 级按 pipesAsConcat 方言裁决）
     private static final int PREC_OR = 1;
     private static final int PREC_XOR = 2;
     private static final int PREC_AND = 3;
     private static final int PREC_NOT = 4;
     private static final int PREC_BETWEEN = 5;
     private static final int PREC_CMP = 6;
-    private static final int PREC_BIT_OR = 7;
-    private static final int PREC_BIT_AND = 8;
-    private static final int PREC_SHIFT = 9;
-    private static final int PREC_ADD = 10;
-    private static final int PREC_MUL = 11;
-    private static final int PREC_BIT_XOR = 12;
-    private static final int PREC_UNARY = 13;
+    private static final int PREC_CONCAT = 7;
+    private static final int PREC_BIT_OR = 8;
+    private static final int PREC_BIT_AND = 9;
+    private static final int PREC_SHIFT = 10;
+    private static final int PREC_ADD = 11;
+    private static final int PREC_MUL = 12;
+    private static final int PREC_BIT_XOR = 13;
+    private static final int PREC_UNARY = 14;
     private static final int PREC_ATOM = 99;
 
     private final DialectProfile profile;
@@ -523,8 +525,8 @@ public final class AstRenderer {
         out.append(')');
     }
 
-    /** 节点结合力（WHITELIST §2 优先级表；原子恒 99）。 */
-    static int precedence(final Expr expr) {
+    /** 节点结合力（WHITELIST §2 优先级表；原子恒 99；|| 随 profile——实例方法）。 */
+    int precedence(final Expr expr) {
         if (expr instanceof BinaryExpr) {
             return binaryPrecedence(((BinaryExpr) expr).operator());
         }
@@ -541,10 +543,14 @@ public final class AstRenderer {
         return PREC_ATOM;
     }
 
-    private static int binaryPrecedence(final String operator) {
+    private int binaryPrecedence(final String operator) {
         final String op = operator.toUpperCase(java.util.Locale.ROOT);
-        if ("OR".equals(op) || "||".equals(op)) {
+        if ("OR".equals(op)) {
             return PREC_OR;
+        }
+        // || 方言二义（F4 裁决 L1）：PG/Oracle 为拼接（7 级，高于比较），MySQL 为逻辑 OR
+        if ("||".equals(op)) {
+            return profile.pipesAsConcat() ? PREC_CONCAT : PREC_OR;
         }
         if ("XOR".equals(op)) {
             return PREC_XOR;

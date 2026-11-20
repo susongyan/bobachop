@@ -69,4 +69,14 @@ public abstract class DialectProfile {
     public boolean dmlReturning() {
         return false;
     }
+
+    /**
+     * {@code ||} 是否为字符串拼接（高于比较级）：PG 语法书将其归"其他运算符"层
+     * （高于比较、低于加减），Oracle 运算符优先级表将其与二元 {@code +}/{@code -} 同层
+     * （高于比较）；MySQL 默认 {@code || = OR}（逻辑或，最低级；{@code PIPES_AS_CONCAT}
+     * 模式不在白名单）。同一段文本在三方言产出不同树——F4 裁决 L1。
+     */
+    public boolean pipesAsConcat() {
+        return false;
+    }
 }

@@ -71,8 +71,9 @@ public final class Parser {
         } else {
             throw new ParseException("期望 DML 语句但为 " + first, first.start());
         }
-        // RETURNING 已由各 DML 子语法器按 dmlReturning 门禁消费（PG 方言锚点，契约 v1.1）；
-        // SELECT 语句尾出现 RETURNING 不合法，落"语句后多余 token" ParseException 自然拒绝
+        // RETURNING 由各 DML 子语法器按 dmlReturning 门禁消费（PG 方言锚点，契约 v1.1）；
+        // F4 裁决 L5：Oracle 词表收录 RETURNING，DML 尾由子语法器前置归类 Unsupported；
+        // SELECT 语句尾出现 RETURNING 不合法，落"语句后多余 token" ParseException（三方言一致）
         if (TokenType.SEMICOLON == buffer.peek(0).type()) {
             buffer.next();
         }

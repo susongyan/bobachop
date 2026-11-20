@@ -51,6 +51,11 @@ public final class KeywordTable {
         return out;
     }
 
+    /** 本方言收录的全词集（保留 ∪ 非保留）——对拍体系 F4 接受面矩阵的枚举位。 */
+    public Set<Kw> allWords() {
+        return EnumSet.copyOf(words.values());
+    }
+
     /** MySQL 8.0 关键字表（Kw 主段全集，不含方言追加段）。 */
     public static KeywordTable mySql() {
         return MY_SQL;

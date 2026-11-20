@@ -458,10 +458,18 @@ public final class SelectParser {
             throw unsupported("FETCH 省略计数（隐含 1，无字面锚点）", buffer.peek(0));
         }
         final Expr count = parseLimitArg();
+        // PERCENT 仅 Oracle 关键字（F4 裁决 L6）：词表自限，PG 语句里 PERCENT 为标识符落下行 ParseException
+        if (buffer.peek(0).isKw(Kw.PERCENT)) {
+            throw unsupported("FETCH PERCENT 形态（按百分比取数，Oracle 12c+）", buffer.peek(0));
+        }
         if (!buffer.peek(0).isKw(Kw.ROW) && !buffer.peek(0).isKw(Kw.ROWS)) {
             throw new ParseException("期望 ROW 或 ROWS 但为 " + buffer.peek(0), buffer.peek(0).start());
         }
         buffer.next();
+        // WITH TIES 为 PG 13+/Oracle 12c+ 合法语法（F4 裁决 L6），契约无锚前置归类
+        if (buffer.peek(0).isKw(Kw.WITH)) {
+            throw unsupported("FETCH ... WITH TIES（并列行取回）", buffer.peek(0));
+        }
         final Token only = buffer.peek(0);
         if (!only.isKw(Kw.ONLY)) {
             throw new ParseException("期望 FETCH ... ONLY 但为 " + only, only.start());

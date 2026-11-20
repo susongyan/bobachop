@@ -62,12 +62,29 @@ public final class DeleteParser {
         return new DeleteStatement(delete.start(), lastStop(), table, where, returning);
     }
 
-    /** PG 方言锚点：RETURNING 清单（其余方言该词不存在，恒 null）。 */
+    /**
+     * PG 方言锚点：RETURNING 清单。词在方言表内但无契约锚（Oracle RETURNING INTO，
+     * F4 裁决 L5）前置归类 Unsupported；MySQL 无此词恒走标识符路径落"多余 token"
+     * ParseException。
+     */
     private List<SelectItem> parseReturningIfPresent() {
-        if (profile.dmlReturning() && buffer.peek(0).isKw(Kw.RETURNING)) {
+        if (buffer.peek(0).isKw(Kw.RETURNING)) {
+            if (!profile.dmlReturning()) {
+                throw unsupported("RETURNING INTO 子句（Oracle，契约待演进）", buffer.peek(0));
+            }
             return selects.parseReturning();
         }
         return null;
+    }
+
+    /** 只读判断：RETURNING 是否引导子句而非裸别名——后随 WHERE/SET/EOF 为别名用法（F4 裁决 L5）。 */
+    private boolean returningClauseAhead() {
+        if (!buffer.peek(0).isKw(Kw.RETURNING)) {
+            return false;
+        }
+        final Token next = buffer.peek(1);
+        return !next.isKw(Kw.WHERE) && !next.isKw(Kw.SET) && TokenType.EOF != next.type()
+                && TokenType.SEMICOLON != next.type();
     }
 
     /** 只读判断：当前位置是否多表 JOIN 形态（不改游标，D2 只读前瞻）。 */
@@ -119,7 +136,9 @@ public final class DeleteParser {
             }
             buffer.next();
             alias = expectName("AS 后的表别名");
-        } else if (isNameToken(buffer.peek(0)) && !joinStartAhead()) {
+        } else if (isNameToken(buffer.peek(0)) && !returningClauseAhead() && !joinStartAhead()) {
+            // RETURNING 在 PG 保留、Oracle 非保留（F4 裁决 L5）：别名位以只读前瞻消歧——
+            // 后随 WHERE/EOF 为别名用法（与服务器同收），后随投影/INTO 为子句锚点让位
             alias = buffer.next();
         }
         return new TableName(first.start(), null != alias ? alias.stop() : name.stop(), qualifier, name.text(),

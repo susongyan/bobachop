@@ -53,11 +53,18 @@ final class OracleDialect extends DialectProfile {
             Kw.UNION, Kw.UNIQUE, Kw.UPDATE, Kw.USER, Kw.USING, Kw.VALIDATE, Kw.VALUES,
             Kw.VARCHAR, Kw.VARCHAR2, Kw.VIEW, Kw.WHENEVER, Kw.WHERE, Kw.WITH);
 
-    /** 语法键控的非保留字（本内核语法锚点；在 Oracle 中可作标识符，语法器按位置裁决）。 */
+    /**
+     * 语法键控的非保留字（本内核语法锚点；在 Oracle 中可作标识符，语法器按位置裁决）。
+     * RETURNING 入表（F4 裁决 L5）：Oracle 合法语法 RETURNING INTO 白名单外，词不进表则
+     * 沦普通标识符落 ParseException——入非保留表后语句尾由分派位前置归类为 Unsupported，
+     * 且 {@code SELECT returning FROM t} 列名用法仍可用。PERCENT/TIES 同理（L6，
+     * FETCH 百分比/并列行形态前置归类，标识符用法保留）。
+     */
     private static final Set<Kw> ORACLE_NON_RESERVED = EnumSet.of(
             Kw.CASE, Kw.CROSS, Kw.END, Kw.ESCAPE, Kw.FALSE, Kw.FIRST, Kw.FULL, Kw.INNER,
             Kw.JOIN, Kw.LEFT, Kw.MERGE, Kw.NATURAL, Kw.NEXT, Kw.NULLS, Kw.ONLY,
-            Kw.OUTER, Kw.RIGHT, Kw.TIMESTAMP, Kw.TRUE, Kw.WHEN);
+            Kw.OUTER, Kw.PERCENT, Kw.RETURNING, Kw.RIGHT, Kw.TIMESTAMP, Kw.TIES, Kw.TRUE,
+            Kw.WHEN);
 
     /** Oracle 关键字 = 保留字 ∪ 语法键控非保留字。 */
     private static final KeywordTable ORACLE_TABLE = new KeywordTable(union(), ORACLE_RESERVED);
@@ -107,6 +114,11 @@ final class OracleDialect extends DialectProfile {
 
     @Override
     public boolean multiTableInsert() {
+        return true;
+    }
+
+    @Override
+    public boolean pipesAsConcat() {
         return true;
     }
 }

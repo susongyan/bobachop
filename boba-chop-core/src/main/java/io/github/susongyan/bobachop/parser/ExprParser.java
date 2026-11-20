@@ -56,13 +56,16 @@ public final class ExprParser {
     private static final int PREC_NOT = 4;
     private static final int PREC_BETWEEN = 5;
     private static final int PREC_CMP = 6;
-    private static final int PREC_BIT_OR = 7;
-    private static final int PREC_BIT_AND = 8;
-    private static final int PREC_SHIFT = 9;
-    private static final int PREC_ADD = 10;
-    private static final int PREC_MUL = 11;
-    private static final int PREC_BIT_XOR = 12;
-    private static final int PREC_UNARY = 13;
+    // F4 裁决 L1：|| 方言二义——PG（"其他运算符"层）/Oracle（与 + 同层）为拼接、高于比较；
+    // MySQL 为逻辑 OR（最低级）。同一文本 a || b = c 三方言两树，结合力按 profile 裁决。
+    private static final int PREC_CONCAT = 7;
+    private static final int PREC_BIT_OR = 8;
+    private static final int PREC_BIT_AND = 9;
+    private static final int PREC_SHIFT = 10;
+    private static final int PREC_ADD = 11;
+    private static final int PREC_MUL = 12;
+    private static final int PREC_BIT_XOR = 13;
+    private static final int PREC_UNARY = 14;
 
     /** 受限函数名（特殊形态语法或保留字函数名，v1 一律拒绝，宁窄勿错）。 */
     private static final Set<String> BLOCKED_FUNCTION_NAMES = new HashSet<String>(
@@ -506,7 +509,7 @@ public final class ExprParser {
         if (TokenType.OPERATOR == token.type()) {
             final String text = token.text();
             if ("||".equals(text)) {
-                return PREC_OR;
+                return profile.pipesAsConcat() ? PREC_CONCAT : PREC_OR;
             }
             if ("&&".equals(text)) {
                 return PREC_AND;

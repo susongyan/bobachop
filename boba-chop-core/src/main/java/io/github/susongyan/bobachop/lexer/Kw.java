@@ -168,6 +168,8 @@ public enum Kw {
     ONLINE,
     /** Oracle 保留。 */
     PCTFREE,
+    /** Oracle 非保留（语法键控：FETCH FIRST n PERCENT 形态；白名单外，分页位前置归类，F4）。 */
+    PERCENT,
     /** Oracle 保留（层级查询 START WITH；白名单外，尾部前置归类）。 */
     START,
     /** Oracle 保留（CONNECT BY 的 PRIOR；白名单外）。 */
@@ -194,6 +196,8 @@ public enum Kw {
     SYNONYM,
     /** Oracle 保留。 */
     SYSDATE,
+    /** Oracle 非保留（语法键控：FETCH ... WITH TIES 形态；白名单外，分页位前置归类，F4）。 */
+    TIES,
     /** Oracle 保留。 */
     UID,
     /** Oracle 保留。 */
@@ -213,8 +217,8 @@ public enum Kw {
                     ACCESS, AUDIT, CLUSTER, COMMENT, COMPRESS, CONNECT, CURRENT, EXCLUSIVE, FILE,
                     IDENTIFIED, IMMEDIATE, INCREMENT, INITIAL, LEVEL, MAXEXTENTS, MERGE, MINUS, MLSLABEL, MODE,
                     MODIFY, NOAUDIT, NOCOMPRESS, NOWAIT, NULLS, NUMBER, OFFLINE, ONLINE, PCTFREE,
-                    PRIOR, PUBLIC, RAW, RESOURCE, ROWID, ROWNUM, SESSION, SHARE, SIZE, START,
-                    SUCCESSFUL, SYNONYM, SYSDATE, UID, VALIDATE, VARCHAR2, VIEW, WHENEVER));
+                    PERCENT, PRIOR, PUBLIC, RAW, RESOURCE, ROWID, ROWNUM, SESSION, SHARE, SIZE, START,
+                    SUCCESSFUL, SYNONYM, SYSDATE, TIES, UID, VALIDATE, VARCHAR2, VIEW, WHENEVER));
 
     /** 方言追加段只读视图（关键字表装配用）。 */
     public static Set<Kw> dialectAdditions() {

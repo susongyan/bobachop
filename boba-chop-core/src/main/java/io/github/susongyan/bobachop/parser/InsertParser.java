@@ -99,9 +99,13 @@ public final class InsertParser {
                 break;
             }
         }
-        // PG 方言锚点：RETURNING 清单（其余方言该词不存在，恒 null）
+        // PG 方言锚点：RETURNING 清单；词在方言表内但无契约锚（Oracle RETURNING INTO，
+        // F4 裁决 L5）前置归类 Unsupported；MySQL 无此词恒走标识符路径落"多余 token"
         final List<SelectItem> returning;
-        if (profile.dmlReturning() && buffer.peek(0).isKw(Kw.RETURNING)) {
+        if (buffer.peek(0).isKw(Kw.RETURNING)) {
+            if (!profile.dmlReturning()) {
+                throw unsupported("RETURNING INTO 子句（Oracle，契约待演进）", buffer.peek(0));
+            }
             returning = selects.parseReturning();
         } else {
             returning = null;

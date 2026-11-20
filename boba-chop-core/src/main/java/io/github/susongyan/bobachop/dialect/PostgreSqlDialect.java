@@ -94,4 +94,10 @@ final class PostgreSqlDialect extends DialectProfile {
     public boolean tableAliasAs() {
         return true;
     }
+
+    @Override
+    public boolean pipesAsConcat() {
+        // PG 语法书：|| 归"其他运算符"层（高于比较、低于加减），与 MySQL 的 || = OR 分道（F4 裁决 L1）
+        return true;
+    }
 }
