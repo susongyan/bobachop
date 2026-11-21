@@ -7,3 +7,6 @@ target/
 .project
 .settings/
 dependency-reduced-pom.xml
+
+# 生产实例语料槽位：真实流量 SQL 永不进公开仓，本目录整体 gitignored
+corpus-internal/

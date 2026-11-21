@@ -7,3 +7,6 @@
 - **开源语料**：Apache-2.0 资源引入须保留 attribution（文件头标注来源与许可证）
 
 生产实例语料（真实捕获的流量）不进本仓——语料切割线见 bobapour 仓 DESIGN.md：形态类在仓内，生产实例仅内网。
+
+生产语料剖析（拒绝率/形态分布，内网执行）：语料放 `corpus-internal/`（gitignored），
+用 `boba-chop-diff` 的 `CorpusProfiler` 出报告——工具与口径见该类 javadoc。
