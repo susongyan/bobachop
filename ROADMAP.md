@@ -21,6 +21,8 @@
 - [x] F3 变异模糊 + 元性质（2026-11-20，DESIGN v2.6：Mutator token 级五操作 + 封闭性/确定性/往返/偏移不变量两门禁 + 深度护栏新规格条目（同时 ≤256 共享预算，预声明兑现）；抓出并修复缺陷 ×4——分页形态参数序静默对调（数据损坏级，Limit.form 契约演进）/REGEXP 渲染漏收/R6 限定名公式校准/HAVING 独立渲染；同窗口冻结 PG RETURNING 契约演进（三 DML 语句追加 returning 字段，投影项同形零新节点，dmlReturning 开关 + 词表自限门禁 + corpus pg/dml-v1 22 条）；177 测试全绿，模糊多种子扫量全绿）
 - [x] F4 接受面矩阵 + 裁决台账（2026-11-20，DESIGN v2.7：AcceptanceMatrixTest——方言词表全词 × 四标识符槽位 2000 针快照门禁（快照即门禁）+ 契约卫生断言，26 格 UNSUPPORTED 与前置归类总表逐格核销；LEDGER.md v1.0 裁决台账（L1–L8，真值=服务器语法书）承接 §8 校准点；挂账六项全清——修复 || 方言优先级（pipesAsConcat 开关 + PREC_CONCAT=7，梯度 13→14 级，解析/渲染两侧独立同步）/Oracle RETURNING INTO 与 FETCH PERCENT/WITH TIES 分类（词表自限 + DML 尾前置归类 + 别名位只读前瞻，生成器采样撞出纯位置键控盲点），维持 Oracle CASE 族/裸 HAVING/REGEXP 族（补回归锚 DialectAdjudicationTest 17 用例）；196 测试全绿（core 150/diff 40/bench 6），模糊 3 种子 ×8000 变异体全绿）
 - [x] F5 规格语法 + 同机 KPI（2026-11-20，DESIGN v2.8：BobaChopSpec.g4 并集规格语法（bench 陪练位，按 WHITELIST 独立翻译；容差 T1/T2/T3 单向声明+字符串转义两义双规则；UNION 尾锚结构化双向拒）+ SpecGrammarDifferentialTest 方向性对拍（160 条语料 + 2000 针矩阵重放差异 ≡ 0 + 28 负例双向拒 + 10 容差单向锁定）+ 同机 KPI 实测（稳态 p99 最差形态 UPDATE 5.5x ≥5x 达标、全形态 5.5–18.1x；冷启动 21.25ms vs 82.83ms = 3.9x；收敛 1.17x；R²=1.0000）；开发期对拍抓出语法侧缺陷 ×6；201 测试全绿——**对拍体系 v2 F1–F5 齐装**）
+- [x] 覆盖缺口补齐 + 生产语料剖析器（2026-11-21：corpus/oracle/dml-v1 36 条（INSERT 全家/UPDATE 别名/DELETE/RETURNING 位置键控三形态）入语料回归与模糊种子门禁；CorpusProfiler 三支分类剖析（Top 拒绝消息前缀=白名单缺口定位输入、形态/长度分布，观测非门禁）+ corpus-internal/ 内网语料槽（gitignored）；checkstyle 绑入 mvn verify 根除 CI-only 漂移；205 测试全绿）
+- [x] 性能正式轮收口（2026-11-21，DESIGN v2.9：清场静机全场景——稳态 p99 最差 JOIN 4.9x（带内贴线）、全形态 4.9–12.3x、冷启动 21.49ms vs 82.78ms = 3.9x、收敛 1.28x、R² = 0.99998；负载两轮 + 清场一轮 4.9/4.8/4.9x 三轮复现证认贴线为真实水平，JOIN/UPDATE 登记指定优化目标；立项背景对照（§1.1 六痛点）入 bench 报告渲染）
 
 任务状态：
 
