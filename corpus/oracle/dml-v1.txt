@@ -1,0 +1,39 @@
+-- BobaChop corpus: Oracle INSERT/UPDATE/DELETE v1 白名单形态（每行一条；空行与本形态注释行跳过）
+-- INSERT：VALUES 族（列清单/省略/多行/参数/序列/时间字面量/N'' 前缀串/|| 串接/CASE）
+INSERT INTO t_order (id, user_id, amount) VALUES (1, 1001, 9.90)
+INSERT INTO t_order (id, user_id, amount) VALUES (2, 1002, 19.90), (3, 1003, 29.90)
+INSERT INTO t_order (id, amount) VALUES (?, ?)
+INSERT INTO t_order VALUES (4, 1004, 39.90)
+INSERT INTO hr.t_order (id) VALUES (?)
+INSERT INTO t_order (id) VALUES (seq_order.NEXTVAL)
+INSERT INTO t_order (id, created) VALUES (5, DATE '2026-01-01')
+INSERT INTO t_order (id, created) VALUES (6, TIMESTAMP '2026-01-01 00:00:00')
+INSERT INTO t_user (id, name) VALUES (7, N'名字')
+INSERT INTO t_user (name) VALUES ('a' || 'b')
+INSERT INTO t_user (tag) VALUES (CASE WHEN ? = 1 THEN 'x' ELSE 'y' END)
+INSERT INTO "Order Table" ("Col A") VALUES (1)
+INSERT INTO t_order (id, amount) VALUES (-8, -1.5)
+-- INSERT ... SELECT（列清单/星号投影/子查询过滤）
+INSERT INTO t_archive (id, amount) SELECT id, amount FROM t_order WHERE status = 'PAID'
+INSERT INTO t_archive SELECT * FROM t_order WHERE id > ?
+INSERT INTO t_clean (id) SELECT id FROM t_order WHERE user_id IN (SELECT user_id FROM t_blocked)
+-- UPDATE：裸别名（Oracle 表位无 AS）/限定赋值/表达式/标量子查询/函数/字面量
+UPDATE t_order SET status = 'PAID'
+UPDATE t_order SET status = 'PAID', amount = amount + 1 WHERE id = ?
+UPDATE t_order u SET u.status = 'CANCELLED' WHERE u.id = 9
+UPDATE hr.employees e SET e.sal = e.sal * 1.1 WHERE e.deptno = 10
+UPDATE t_order SET max_amount = (SELECT MAX(amount) FROM t_order_item) WHERE id = 1
+UPDATE t_user SET name = UPPER(name) WHERE id = 2
+UPDATE t_order SET note = note || '-suffix' WHERE id = 3
+UPDATE t_order SET created = DATE '2026-01-01' WHERE id = 4
+UPDATE "Order Table" SET status = 'PAID' WHERE id = 5
+-- DELETE：别名/限定条件/时间字面量/子查询
+DELETE FROM t_order
+DELETE FROM t_order WHERE id = ?
+DELETE FROM t_order u WHERE u.id = 10
+DELETE FROM hr.audit_log WHERE ts < TIMESTAMP '2026-01-01 00:00:00'
+DELETE FROM t_order WHERE user_id IN (SELECT user_id FROM t_blocked)
+-- RETURNING 非保留词位置键控（后随 EOF/WHERE/SET 判别名用法；RETURNING INTO 子句白名单外）
+DELETE FROM t_order RETURNING
+DELETE FROM t_order returning WHERE id = 11
+UPDATE t_order returning SET status = 'PAID' WHERE id = 12

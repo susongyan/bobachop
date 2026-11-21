@@ -26,7 +26,8 @@ final class SpanInvariantsCorpusTest {
     /** 语料 → 方言（形态语料分方言目录，语料切割线见 corpus/README.md；与 MutationFuzzTest 同一清单）。 */
     private static final String[][] CORPORA = {
         {"mysql", "select-v1.txt"}, {"mysql", "dml-v1.txt"},
-        {"pg", "select-v1.txt"}, {"pg", "dml-v1.txt"}, {"oracle", "select-v1.txt"},
+        {"pg", "select-v1.txt"}, {"pg", "dml-v1.txt"},
+        {"oracle", "select-v1.txt"}, {"oracle", "dml-v1.txt"},
     };
 
     @Test

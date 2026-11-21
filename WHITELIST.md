@@ -159,7 +159,7 @@
 | 词法 | — | LexerTest / PgLexerTest / OracleLexerTest |
 | 表达式 | — | ExprParserTest |
 | SELECT | CorpusSelectV1Test / CorpusPgSelectV1Test / CorpusOracleSelectV1Test | SelectParserTest / PgParserTest / OracleParserTest |
-| DML | CorpusDmlV1Test | InsertParserTest / UpdateDeleteParserTest |
+| DML | CorpusDmlV1Test / CorpusPgDmlV1Test / CorpusOracleDmlV1Test | InsertParserTest / UpdateDeleteParserTest |
 | 接受面 | acceptance-matrix.tsv 快照（F4） | AcceptanceMatrixTest / DialectAdjudicationTest |
 | 规格语法陪练（F5） | —（bench 模块；方向性口径=内核收 ⇒ 语法收 ≡ 0，容差 T1/T2/T3 单向） | SpecGrammarDifferentialTest（bench：语料+矩阵重放+负例+容差锁定） |
 | 规格本身 | WhitelistDocTest（本文存在且版本与 DESIGN 版本记录对齐） | — |

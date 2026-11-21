@@ -47,7 +47,8 @@ final class MutationFuzzTest {
     /** 语料 → 方言（与 SpanInvariantsCorpusTest 同一清单）。 */
     private static final String[][] CORPORA = {
         {"mysql", "select-v1.txt"}, {"mysql", "dml-v1.txt"},
-        {"pg", "select-v1.txt"}, {"pg", "dml-v1.txt"}, {"oracle", "select-v1.txt"},
+        {"pg", "select-v1.txt"}, {"pg", "dml-v1.txt"},
+        {"oracle", "select-v1.txt"}, {"oracle", "dml-v1.txt"},
     };
 
     private static final DialectProfile[] PROFILES = {
