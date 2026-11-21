@@ -96,20 +96,50 @@ public final class BenchMain {
                 .append(" / cores: ").append(Runtime.getRuntime().availableProcessors()).append('\n');
         md.append("- 口径: 手写基准（无 JMH）；逐次计时含 nanoTime 开销 ~20-40ns；sink 防死码消除\n\n");
 
-        md.append("## 对照基线（§1.1 ANTLR4 实测；不同硬件，仅量级对照）\n\n");
-        md.append("| 场景 | ANTLR4 基线 | 本内核 |\n|---|---|---|\n");
-        md.append("| 冷启动(进程首调, MySQL 方言) | 621 ms | ")
-                .append(find(results, "cold-start", "冷启动中位").render()).append(" |\n");
-        md.append("| 简单查询稳态 | ~6 µs | ")
-                .append(find(results, "steady-state", "简单查询 p50").render()).append(" |\n");
-        md.append("| IN(1000) | ~1.2 ms | ")
-                .append(find(results, "steady-state", "IN(1000) p50").render()).append(" |\n");
-        md.append("| 批量 INSERT 1000 行 | ~7.8 ms (≈8µs/行) | ")
-                .append(find(results, "steady-state", "批量INSERT(1000行) p50").render()).append(" |\n");
-        md.append("| 首走新形态 第1次 | 6 µs ~ 80 ms | ")
-                .append(find(results, "first-walk", "首走第1次").render()).append(" |\n");
-        md.append("| 首走新形态 第2次 | 150 µs ~ 660 µs（持续 3~20x 劣化） | ")
-                .append(find(results, "first-walk", "首走第2次").render()).append(" |\n\n");
+        md.append("## 立项背景对照（§1.1 ANTLR4 痛点 → 本内核；基线为跨硬件实测，仅量级对照；\n");
+        md.append("同机陪练列 = F5 ANTLR4 规格语法同 JVM 实测，详见指标明细）\n\n");
+        md.append("| 痛点（§1.1） | ANTLR4 基线 | 本内核 | 同机陪练 |\n|---|---|---|---|\n");
+        if (results.containsKey("cold-start")) {
+            md.append("| 冷启动（进程首调，MySQL 方言） | 621 ms | ")
+                    .append(find(results, "cold-start", "冷启动中位").render()).append(" | ")
+                    .append(find(results, "cold-start", "冷启动中位(陪练ANTLR4)").render())
+                    .append("（倍率 ").append(String.format("%.1f",
+                            find(results, "cold-start", "冷启动陪练倍率(ANTLR4/内核)").value))
+                    .append("x）|\n");
+        }
+        md.append("| 首走新形态 第1次（adaptivePredict 现场 DFA） | 6 µs ~ 80 ms | ")
+                .append(find(results, "first-walk", "首走第1次").render()).append(" | — |\n");
+        md.append("| 首走新形态 第2次（持续 3~20x 劣化） | 150 ~ 660 µs | ")
+                .append(find(results, "first-walk", "首走第2次").render()).append("（收敛比 ")
+                .append(String.format("%.2f", findPrefix(results, "first-walk", "收敛比 第").value))
+                .append("x）| — |\n");
+        md.append("| 稳态 简单查询 | ~6 µs | ")
+                .append(find(results, "steady-state", "简单查询 p50").render());
+        if (results.containsKey("spec-sparring")) {
+            md.append(" | p99 ").append(String.format("%.1f",
+                    find(results, "spec-sparring", "简单查询 p99倍率(陪练/内核)").value)).append("x |");
+        } else {
+            md.append(" | — |");
+        }
+        md.append('\n');
+        md.append("| 稳态 IN(1000) | ~1.2 ms | ")
+                .append(find(results, "steady-state", "IN(1000) p50").render());
+        if (results.containsKey("spec-sparring")) {
+            md.append(" | p99 ").append(String.format("%.1f",
+                    find(results, "spec-sparring", "IN(1000) p99倍率(陪练/内核)").value)).append("x |");
+        } else {
+            md.append(" | — |");
+        }
+        md.append('\n');
+        md.append("| 稳态 批量 INSERT 1000 行（≈8µs/行） | ~7.8 ms | ")
+                .append(find(results, "steady-state", "批量INSERT(1000行) p50").render());
+        if (results.containsKey("spec-sparring")) {
+            md.append(" | p99 ").append(String.format("%.1f",
+                    find(results, "spec-sparring", "批量INSERT(1000行) p99倍率(陪练/内核)").value)).append("x |");
+        } else {
+            md.append(" | — |");
+        }
+        md.append('\n');
 
         md.append("## 指标明细\n");
         for (final Map.Entry<String, List<Metric>> entry : results.entrySet()) {
