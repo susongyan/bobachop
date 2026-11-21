@@ -17,11 +17,5 @@ jobs:
           cache: maven
       - name: Build (Java 8 release baseline)
         run: mvn -B -ntp verify
-      - name: Checkstyle
-        run: |
-          FILES=$(find . -name '*.java' -not -path '*/target/*')
-          if [ -n "$FILES" ]; then
-            curl -sSfL -o /tmp/checkstyle.jar \
-              https://github.com/checkstyle/checkstyle/releases/download/checkstyle-10.12.4/checkstyle-10.12.4-all.jar
-            java -jar /tmp/checkstyle.jar -c checkstyle.xml $FILES
-          fi
+      # checkstyle 已绑进 pom 的 verify 阶段（maven-checkstyle-plugin + checkstyle 10.12.4），
+      # 本地 mvn install 与 CI 同一门禁，无需独立步骤
