@@ -96,8 +96,8 @@ public final class BenchMain {
                 .append(" / cores: ").append(Runtime.getRuntime().availableProcessors()).append('\n');
         md.append("- 口径: 手写基准（无 JMH）；逐次计时含 nanoTime 开销 ~20-40ns；sink 防死码消除\n\n");
 
-        md.append("## 立项背景对照（§1.1 ANTLR4 痛点 → 本内核；基线为跨硬件实测，仅量级对照；\n");
-        md.append("同机陪练列 = F5 ANTLR4 规格语法同 JVM 实测，详见指标明细）\n\n");
+        md.append("## 立项背景对照（§1.1）\n\n");
+        md.append("痛点列为 ANTLR4 实测基线（跨硬件，仅量级对照）；同机陪练列 = F5 ANTLR4 规格语法同 JVM 实测，详见指标明细。\n\n");
         md.append("| 痛点（§1.1） | ANTLR4 基线 | 本内核 | 同机陪练 |\n|---|---|---|---|\n");
         if (results.containsKey("cold-start")) {
             md.append("| 冷启动（进程首调，MySQL 方言） | 621 ms | ")
